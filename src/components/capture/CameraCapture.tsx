@@ -15,6 +15,8 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
   const [isLandscape, setIsLandscape] = useState(true);
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [exposure, setExposure] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
@@ -75,6 +77,34 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
           advanced: [{ torch: !flashEnabled } as any]
         });
         setFlashEnabled(!flashEnabled);
+      }
+    }
+  };
+
+  const handleZoomChange = (value: number) => {
+    setZoom(value);
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities() as any;
+      
+      if (capabilities.zoom) {
+        track.applyConstraints({
+          advanced: [{ zoom: value } as any]
+        });
+      }
+    }
+  };
+
+  const handleExposureChange = (value: number) => {
+    setExposure(value);
+    if (stream) {
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities() as any;
+      
+      if (capabilities.exposureCompensation) {
+        track.applyConstraints({
+          advanced: [{ exposureCompensation: value } as any]
+        });
       }
     }
   };
@@ -143,6 +173,41 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
               <ZapOff className="w-5 h-5 text-foreground" />
             )}
           </button>
+        </div>
+
+        {/* Right side controls */}
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-8 pointer-events-auto">
+          {/* Zoom control */}
+          <div className="flex flex-col items-center gap-3 bg-overlay/80 backdrop-blur-sm rounded-full p-4 border border-border/50">
+            <span className="text-xs text-muted-foreground font-medium">ZOOM</span>
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.1"
+              value={zoom}
+              onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+              className="slider-vertical h-32 w-2 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer"
+              style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+            />
+            <span className="text-xs text-foreground font-bold">{zoom.toFixed(1)}x</span>
+          </div>
+
+          {/* Exposure control */}
+          <div className="flex flex-col items-center gap-3 bg-overlay/80 backdrop-blur-sm rounded-full p-4 border border-border/50">
+            <span className="text-xs text-muted-foreground font-medium">EXP</span>
+            <input
+              type="range"
+              min="-2"
+              max="2"
+              step="0.1"
+              value={exposure}
+              onChange={(e) => handleExposureChange(parseFloat(e.target.value))}
+              className="slider-vertical h-32 w-2 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer"
+              style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+            />
+            <span className="text-xs text-foreground font-bold">{exposure > 0 ? '+' : ''}{exposure.toFixed(1)}</span>
+          </div>
         </div>
 
         {/* Center reticle */}
