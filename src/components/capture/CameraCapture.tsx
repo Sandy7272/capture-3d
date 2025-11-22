@@ -1,15 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ArrowLeft, Zap, ZapOff, Settings } from "lucide-react";
+import { ArrowLeft, Zap, ZapOff, Settings, RefreshCw, Image, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RecordingRound from "./RecordingRound";
 import ProcessingScreen from "./ProcessingScreen";
-import VideoTutorialOverlay from "./VideoTutorialOverlay"; // Import the new component
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import VideoTutorialOverlay from "./VideoTutorialOverlay";
+import CameraPermissionError from "./CameraPermissionError";
+import CameraSettingsSheet from "./CameraSettingsSheet";
 
 interface CameraCaptureProps {
   onBack: () => void;
@@ -77,6 +73,10 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
   const [supportedFps, setSupportedFps] = useState<FpsOption[]>([]);
   const [showTutorial, setShowTutorial] = useState(false);
   const [currentTutorialVideo, setCurrentTutorialVideo] = useState("");
+  const [cameraPermission, setCameraPermission] = useState<'prompt' | 'granted' | 'denied' | 'error'>('prompt');
+  const [permissionErrorType, setPermissionErrorType] = useState<'denied' | 'blocked' | 'in-use' | 'not-found' | 'unknown'>('unknown');
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [showSettings, setShowSettings] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
@@ -129,7 +129,7 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
       // Apply selected constraints
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment",
+          facingMode: facingMode,
           width: { ideal: currentResolution.width },
           height: { ideal: currentResolution.height },
           frameRate: { ideal: currentFps.value },
@@ -138,6 +138,8 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
       });
 
       setStream(mediaStream);
+      setCameraPermission('granted');
+      
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
         videoRef.current.play().catch((error) => {
@@ -149,26 +151,46 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
         setCurrentResolution({ width: settings.width || 0, height: settings.height || 0, label: `${settings.width}x${settings.height}` });
         setCurrentFps({ value: settings.frameRate || 0, label: `${settings.frameRate} FPS` });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Camera access error:", error);
-      toast({
-        title: "Camera Error",
-        description:
-          "Unable to access camera. On iOS, please ensure camera access is enabled for Safari/browser in your device settings (Settings > Safari > Camera). Also, check if any other app is currently using the camera. " + error,
-        variant: "destructive",
-      });
+      setCameraPermission('error');
+      
+      // Determine error type
+      if (error.name === 'NotAllowedError') {
+        setPermissionErrorType('denied');
+      } else if (error.name === 'NotFoundError') {
+        setPermissionErrorType('not-found');
+      } else if (error.name === 'NotReadableError' || error.name === 'AbortError') {
+        setPermissionErrorType('in-use');
+      } else {
+        setPermissionErrorType('unknown');
+      }
     }
-  }, [toast, currentResolution, currentFps]);
+  }, [toast, currentResolution, currentFps, facingMode]);
 
   const handleChangeResolution = useCallback(async (res: ResolutionOption) => {
     setCurrentResolution(res);
+    setShowSettings(false);
     await initCamera(true);
   }, [initCamera]);
 
   const handleChangeFps = useCallback(async (fps: FpsOption) => {
     setCurrentFps(fps);
+    setShowSettings(false);
     await initCamera(true);
   }, [initCamera]);
+
+  const handleFacingModeChange = useCallback(async (mode: 'environment' | 'user') => {
+    setFacingMode(mode);
+    setShowSettings(false);
+    await initCamera(true);
+  }, [initCamera]);
+
+  const handleRetryPermission = () => {
+    setCameraPermission('prompt');
+    setPermissionErrorType('unknown');
+    initCamera();
+  };
 
   useEffect(() => {
     if (captureState === "setup") {
@@ -287,17 +309,27 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
     }
   };
 
+  // Show permission error screen
+  if (cameraPermission === 'error') {
+    return (
+      <CameraPermissionError 
+        onRetry={handleRetryPermission}
+        errorType={permissionErrorType}
+      />
+    );
+  }
+
   if (!isLandscape) {
     return (
-      <div className="fixed inset-0 bg-background flex items-center justify-center p-6 z-50">
-        <div className="text-center space-y-6 animate-fade-in">
-          <div className="w-24 h-24 mx-auto rounded-full bg-surface border-2 border-neon shadow-neon flex items-center justify-center">
-            <svg className="w-12 h-12 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="fixed inset-0 bg-background flex items-center justify-center p-4 sm:p-6 z-50">
+        <div className="text-center space-y-4 sm:space-y-6 animate-fade-in">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 mx-auto rounded-full bg-surface border-2 border-neon shadow-neon flex items-center justify-center">
+            <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-neon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-foreground">Rotate Your Device</h2>
-          <p className="text-muted-foreground text-lg">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">Rotate Your Device</h2>
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
             Please rotate your phone to landscape mode
           </p>
         </div>
@@ -312,8 +344,22 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
 
   return (
     <div className="fixed inset-0 bg-background">
+      {/* Camera Settings Sheet */}
+      <CameraSettingsSheet
+        isOpen={showSettings}
+        onOpenChange={setShowSettings}
+        currentResolution={currentResolution}
+        currentFps={currentFps}
+        supportedResolutions={supportedResolutions}
+        supportedFps={supportedFps}
+        facingMode={facingMode}
+        onResolutionChange={handleChangeResolution}
+        onFpsChange={handleChangeFps}
+        onFacingModeChange={handleFacingModeChange}
+      />
+
       {/* Video Tutorial Overlay */}
-      <VideoPlayerOverlay
+      <VideoTutorialOverlay
         src={currentTutorialVideo}
         onComplete={handleTutorialComplete}
         isOpen={showTutorial}
@@ -336,65 +382,54 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
           showTutorial ? "hidden" : ""
         }`}
       >
-        {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex justify-start items-center pointer-events-auto bg-gradient-to-b from-background/50 to-transparent">
+        {/* Top bar - iPhone style */}
+        <div className="absolute top-0 left-0 right-0 p-2 sm:p-3 md:p-4 flex justify-between items-center pointer-events-auto bg-gradient-to-b from-background/50 to-transparent">
+          {/* Left: Back button */}
           <button
             onClick={onBack}
-            className="w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
           >
-            <ArrowLeft className="w-5 h-5 text-foreground" />
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
           </button>
-          {/* Resolution Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-xs text-foreground font-medium bg-surface/80 backdrop-blur-sm px-3 py-1 rounded-full hover:bg-surface transition-colors">
-                <span>{currentResolution.label}</span>
-                <Settings className="w-3 h-3" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-40">
-              {supportedResolutions.map((res) => (
-                <DropdownMenuItem
-                  key={`${res.width}x${res.height}`}
-                  onClick={() => handleChangeResolution(res)}
-                  className={`${currentResolution.width === res.width ? "bg-accent text-accent-foreground" : ""}`}
-                >
-                  {res.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
 
-          {/* FPS Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1 text-xs text-foreground font-medium bg-surface/80 backdrop-blur-sm px-3 py-1 rounded-full hover:bg-surface transition-colors">
-                <span>{currentFps.label}</span>
-                <Settings className="w-3 h-3" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-40">
-              {supportedFps.map((fps) => (
-                <DropdownMenuItem
-                  key={fps.value}
-                  onClick={() => handleChangeFps(fps)}
-                  className={`${currentFps.value === fps.value ? "bg-accent text-accent-foreground" : ""}`}
-                >
-                  {fps.label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Center: Current settings badge */}
+          <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-foreground/80 font-medium bg-surface/60 backdrop-blur-sm px-2 sm:px-3 py-1 rounded-full">
+            <span>{currentResolution.label}</span>
+            <span>•</span>
+            <span>{currentFps.value}fps</span>
+            <span>•</span>
+            <span>{facingMode === 'environment' ? 'Back' : 'Front'}</span>
+          </div>
+
+          {/* Right: Flash & Settings */}
+          <div className="flex items-center gap-1 sm:gap-2">
+            <button
+              onClick={toggleFlash}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
+            >
+              {flashEnabled ? (
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-neon fill-neon" />
+              ) : (
+                <ZapOff className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
+              )}
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
+            >
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
+            </button>
+          </div>
         </div>
 
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-4 pointer-events-auto">
-          {/* Zoom control */}
-          <div className="flex flex-col items-center gap-2 bg-overlay/80 backdrop-blur-sm rounded-full p-1 border border-border/50">
+        <div className="absolute right-1.5 sm:right-2 md:right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 sm:gap-3 pointer-events-auto">
+          {/* Zoom control - compact */}
+          <div className="flex flex-col items-center gap-1 sm:gap-1.5 bg-overlay/80 backdrop-blur-sm rounded-full p-0.5 sm:p-1 border border-border/50">
             {[0.5, 1, 2, 3].map((zoomLevel) => (
               <button
                 key={zoomLevel}
                 onClick={() => handleZoomChange(zoomLevel)}
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[9px] sm:text-[10px] font-bold transition-colors ${
                   zoom.toFixed(1) === zoomLevel.toFixed(1)
                     ? "bg-neon text-background shadow-neon"
                     : "bg-transparent text-foreground/70 hover:text-foreground"
@@ -405,11 +440,11 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
             ))}
           </div>
 
-          {/* Exposure control */}
-          <div className="flex flex-col items-center gap-2 bg-overlay/80 backdrop-blur-sm rounded-full p-1 border border-border/50">
+          {/* Exposure control - compact */}
+          <div className="flex flex-col items-center gap-1 sm:gap-1.5 bg-overlay/80 backdrop-blur-sm rounded-full p-0.5 sm:p-1 border border-border/50">
             <button
               onClick={() => setShowExposureSlider(!showExposureSlider)}
-              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-colors bg-transparent text-foreground/70 hover:text-foreground"
+              className="w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center text-[8px] sm:text-[9px] font-bold transition-colors bg-transparent text-foreground/70 hover:text-foreground"
             >
               EXP
             </button>
@@ -421,7 +456,7 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
                 step="0.1"
                 value={exposure}
                 onChange={(e) => handleExposureChange(parseFloat(e.target.value))}
-                className="slider-vertical h-20 w-1 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer mt-1"
+                className="slider-vertical h-16 sm:h-20 w-1 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-2.5 [&::-moz-range-thumb]:h-2.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer mt-1"
                 style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
               />
             )}
@@ -451,30 +486,32 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
           />
         )}
 
-        {/* Bottom bar with controls and shutter */}
-        <div className="absolute bottom-0 left-0 right-0 p-8 flex justify-between items-center pointer-events-auto bg-gradient-to-t from-background/50 to-transparent">
+        {/* Bottom bar - iPhone style */}
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 md:p-6 flex justify-between items-center pointer-events-auto bg-gradient-to-t from-background/50 to-transparent">
+          {/* Left: Gallery preview */}
           <button
-            onClick={toggleFlash}
-            className="w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors border border-border/30"
           >
-            {flashEnabled ? (
-              <Zap className="w-5 h-5 text-neon fill-neon" />
-            ) : (
-              <ZapOff className="w-5 h-5 text-foreground" />
-            )}
+            <Image className="w-5 h-5 sm:w-6 sm:h-6 text-foreground/70" />
           </button>
 
-          {/* Shutter button (only in setup) */}
+          {/* Center: Shutter button (only in setup) */}
           {captureState === "setup" && (
             <button
               onClick={() => setCaptureState("tutorial-middle")}
-              className="w-20 h-20 rounded-full bg-neon hover:bg-neon/80 flex items-center justify-center shadow-neon transition-all hover:scale-105"
+              className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-neon hover:bg-neon/80 flex items-center justify-center shadow-neon transition-all hover:scale-105 active:scale-95"
             >
-              <Circle className="w-12 h-12 text-background fill-background" />
+              <Circle className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-background fill-background" />
             </button>
           )}
-          {/* Placeholder for other modes/settings */}
-          <div className="w-10 h-10" />
+
+          {/* Right: Camera flip button */}
+          <button
+            onClick={() => handleFacingModeChange(facingMode === 'environment' ? 'user' : 'environment')}
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
+          >
+            <RefreshCw className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
+          </button>
         </div>
       </div>
     </div>
