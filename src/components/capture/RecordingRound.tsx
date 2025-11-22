@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Check } from "lucide-react";
+import { Check, Volume2, VolumeX } from "lucide-react";
 
 interface RecordingRoundProps {
   round: number;
@@ -17,8 +17,32 @@ const RecordingRound = ({ round, onComplete, stream }: RecordingRoundProps) => {
   const [isRecording, setIsRecording] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [showComplete, setShowComplete] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true); // State to toggle audio
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  // Audio Instruction Logic (Web Speech API)
+  useEffect(() => {
+    if (!audioEnabled) return;
+
+    // Cancel any previous speech to avoid overlap
+    window.speechSynthesis.cancel();
+
+    const text = roundInstructions[round as keyof typeof roundInstructions];
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Optional: Adjust voice properties
+    utterance.rate = 0.9; // Slightly slower for clarity
+    utterance.pitch = 1;
+    utterance.volume = 1;
+
+    window.speechSynthesis.speak(utterance);
+
+    // Cleanup on unmount or round change
+    return () => {
+      window.speechSynthesis.cancel();
+    };
+  }, [round, audioEnabled]);
 
   // Timer Logic
   useEffect(() => {
@@ -33,7 +57,7 @@ const RecordingRound = ({ round, onComplete, stream }: RecordingRoundProps) => {
     return () => clearInterval(interval);
   }, [isRecording, timeLeft]);
 
-  // Determine supported mime type (Crucial for iOS support)
+  // Determine supported mime type (Crucial for iOS vs Android/Desktop support)
   const getSupportedMimeType = () => {
     const types = [
       "video/webm;codecs=vp9",
@@ -46,6 +70,9 @@ const RecordingRound = ({ round, onComplete, stream }: RecordingRoundProps) => {
 
   const startRecording = () => {
     if (!stream) return;
+
+    // Cancel audio instructions when recording starts
+    window.speechSynthesis.cancel();
 
     try {
       const mimeType = getSupportedMimeType();
@@ -115,13 +142,23 @@ const RecordingRound = ({ round, onComplete, stream }: RecordingRoundProps) => {
 
   return (
     <>
-      {/* Instruction Banner */}
-      <div className="absolute top-20 left-0 right-0 flex justify-center pointer-events-none z-10">
-        <div className="bg-black/60 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 animate-fade-in">
+      {/* Instruction Banner & Audio Toggle */}
+      <div className="absolute top-20 left-0 right-0 flex flex-col items-center gap-2 pointer-events-none z-10">
+        <div className="bg-black/60 backdrop-blur-md px-6 py-2 rounded-full border border-white/10 animate-fade-in flex items-center gap-3 pointer-events-auto">
           <p className="text-white font-medium text-center text-shadow-sm text-sm md:text-base">
             <span className="text-neon font-bold mr-2">ROUND {round}:</span> 
             {roundInstructions[round as keyof typeof roundInstructions]}
           </p>
+          <button 
+            onClick={() => setAudioEnabled(!audioEnabled)}
+            className="p-1.5 rounded-full hover:bg-white/10 transition-colors"
+          >
+            {audioEnabled ? (
+              <Volume2 className="w-4 h-4 text-neon" />
+            ) : (
+              <VolumeX className="w-4 h-4 text-white/50" />
+            )}
+          </button>
         </div>
       </div>
 

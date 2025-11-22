@@ -519,4 +519,3 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
 };
 
 export default CameraCapture;
-
