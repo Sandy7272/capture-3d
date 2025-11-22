@@ -1,5 +1,6 @@
 @tailwind base;
 @tailwind components;
+/* stylelint-disable-next-line at-rule-no-unknown */
 @tailwind utilities;
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -8,59 +9,61 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 220 20% 8%;
-    --foreground: 0 0% 98%;
+    --background: 0 0% 4%; /* Near Black #0A0A0A */
+    --foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
-    --card: 220 18% 12%;
-    --card-foreground: 0 0% 98%;
+    --card: 0 0% 10%; /* Dark Grey #1A1A1A */
+    --card-foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
-    --popover: 220 18% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 0 0% 10%; /* Dark Grey #1A1A1A */
+    --popover-foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
-    --primary: 175 70% 55%;
-    --primary-foreground: 220 20% 8%;
+    --primary: 150 100% 53%; /* Mint Green #2DFFA7 */
+    --primary-foreground: 0 0% 4%; /* Near Black #0A0A0A */
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 0 0% 10%; /* Dark Grey #1A1A1A */
+    --secondary-foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 0 0% 10%; /* Dark Grey #1A1A1A */
+    --muted-foreground: 0 0% 70%; /* Light Grey #B3B3B3 */
 
-    --accent: 175 70% 55%;
-    --accent-foreground: 220 20% 8%;
+    --accent: 150 100% 53%; /* Mint Green #2DFFA7 */
+    --accent-foreground: 0 0% 4%; /* Near Black #0A0A0A */
 
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 55%; /* Keep existing */
+    --destructive-foreground: 0 0% 100%; /* Pure White #FFFFFF */
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 175 70% 55%;
+    --border: 0 0% 20%; /* Medium Dark Grey #333333 */
+    --input: 0 0% 20%; /* Medium Dark Grey #333333 */
+    --ring: 150 100% 53%; /* Mint Green #2DFFA7 */
 
     --radius: 0.75rem;
 
     /* Custom tokens for 3D capture app */
-    --neon: 175 70% 55%;
-    --neon-glow: 175 70% 40%;
-    --surface: 220 18% 12%;
-    --surface-elevated: 220 16% 16%;
-    --overlay: 220 20% 8%;
+    --neon: 150 100% 53%; /* Mint Green #2DFFA7 */
+    --neon-glow: 150 100% 40%; /* Adjusted Mint Green for glow */
+    --surface: 0 0% 10%; /* Dark Grey #1A1A1A */
+    --surface-elevated: 0 0% 20%; /* Medium Dark Grey #333333 */
+    --overlay: 0 0% 4%; /* Near Black #0A0A0A */
     
-    --gradient-primary: linear-gradient(135deg, hsl(175 70% 55%) 0%, hsl(195 80% 50%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(220 20% 8%) 0%, hsl(220 18% 10%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(150 100% 53%) 0%, hsl(170 100% 50%) 100%); /* Adjusted for Mint Green */
+    --gradient-dark: linear-gradient(180deg, hsl(0 0% 4%) 0%, hsl(0 0% 10%) 100%); /* Adjusted for Near Black/Dark Grey */
     
-    --shadow-neon: 0 0 20px hsl(175 70% 55% / 0.3);
-    --shadow-elevated: 0 10px 40px hsl(220 20% 4% / 0.5);
+    --shadow-neon: 0 0 20px hsl(150 100% 53% / 0.3); /* Adjusted for Mint Green */
+    --shadow-elevated: 0 10px 40px hsl(0 0% 4% / 0.5); /* Adjusted for Near Black */
 
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    /* Set border color from the design token instead of using Tailwind @apply */
+    border-color: hsl(var(--border));
   }
 
   body {
-    @apply bg-background text-foreground;
+    /* Use the CSS design-system variables directly */
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }

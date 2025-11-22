@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { ArrowLeft, Zap, ZapOff, Circle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RecordingRound from "./RecordingRound";
@@ -10,6 +10,20 @@ interface CameraCaptureProps {
 
 type CaptureState = "setup" | "round1" | "round2" | "round3" | "processing";
 
+// Extend MediaTrackCapabilities for better type safety
+interface ExtendedMediaTrackCapabilities extends MediaTrackCapabilities {
+  torch?: boolean;
+  zoom?: MediaSettingsRange;
+  exposureCompensation?: MediaSettingsRange;
+}
+
+// Extend MediaTrackConstraintSet for better type safety
+interface ExtendedMediaTrackConstraintSet extends MediaTrackConstraintSet {
+  torch?: boolean;
+  zoom?: number;
+  exposureCompensation?: number;
+}
+
 const CameraCapture = ({ onBack }: CameraCaptureProps) => {
   const [captureState, setCaptureState] = useState<CaptureState>("setup");
   const [isLandscape, setIsLandscape] = useState(true);
@@ -17,6 +31,9 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [zoom, setZoom] = useState(1);
   const [exposure, setExposure] = useState(0);
+  const [showExposureSlider, setShowExposureSlider] = useState(false); // New state for exposure slider visibility
+  const [resolution, setResolution] = useState("Unknown");
+  const [fps, setFps] = useState("Unknown");
   const videoRef = useRef<HTMLVideoElement>(null);
   const { toast } = useToast();
 
@@ -30,19 +47,7 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
     return () => window.removeEventListener("resize", checkOrientation);
   }, []);
 
-  useEffect(() => {
-    if (captureState === "setup") {
-      initCamera();
-    }
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [captureState]);
-
-  const initCamera = async () => {
+  const initCamera = useCallback(async () => {
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -57,6 +62,14 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.play().catch(error => {
+          console.error("Error playing video stream:", error);
+        });
+
+        const track = mediaStream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        setResolution(`${settings.width}x${settings.height}`);
+        setFps(`${settings.frameRate}`);
       }
     } catch (error) {
       toast({
@@ -65,17 +78,29 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
         variant: "destructive"
       });
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (captureState === "setup") {
+      initCamera();
+    }
+
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [captureState, initCamera, stream]);
 
   const toggleFlash = () => {
     if (stream) {
       const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities() as any;
+      const capabilities = track.getCapabilities() as ExtendedMediaTrackCapabilities;
       
-      if (capabilities.torch) {
+      if (capabilities.torch !== undefined) {
         track.applyConstraints({
-          advanced: [{ torch: !flashEnabled } as any]
-        });
+          advanced: [{ torch: !flashEnabled }] as ExtendedMediaTrackConstraintSet[]
+        }).catch(error => console.error("Error toggling torch:", error));
         setFlashEnabled(!flashEnabled);
       }
     }
@@ -85,12 +110,12 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
     setZoom(value);
     if (stream) {
       const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities() as any;
+      const capabilities = track.getCapabilities() as ExtendedMediaTrackCapabilities;
       
-      if (capabilities.zoom) {
+      if (capabilities.zoom !== undefined) {
         track.applyConstraints({
-          advanced: [{ zoom: value } as any]
-        });
+          advanced: [{ zoom: value }] as ExtendedMediaTrackConstraintSet[]
+        }).catch(error => console.error("Error setting zoom:", error));
       }
     }
   };
@@ -99,12 +124,12 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
     setExposure(value);
     if (stream) {
       const track = stream.getVideoTracks()[0];
-      const capabilities = track.getCapabilities() as any;
+      const capabilities = track.getCapabilities() as ExtendedMediaTrackCapabilities;
       
-      if (capabilities.exposureCompensation) {
+      if (capabilities.exposureCompensation !== undefined) {
         track.applyConstraints({
-          advanced: [{ exposureCompensation: value } as any]
-        });
+          advanced: [{ exposureCompensation: value }] as ExtendedMediaTrackConstraintSet[]
+        }).catch(error => console.error("Error setting exposure compensation:", error));
       }
     }
   };
@@ -155,59 +180,65 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
       {/* Overlay controls */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Top bar */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center pointer-events-auto bg-gradient-to-b from-black/50 to-transparent">
+        <div className="absolute top-0 left-0 right-0 p-4 flex justify-start items-center pointer-events-auto bg-gradient-to-b from-background/50 to-transparent">
           <button
             onClick={onBack}
             className="w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-
-          <button
-            onClick={toggleFlash}
-            className="w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
-          >
-            {flashEnabled ? (
-              <Zap className="w-5 h-5 text-neon fill-neon" />
-            ) : (
-              <ZapOff className="w-5 h-5 text-foreground" />
-            )}
-          </button>
+          {/* Resolution and FPS display */}
+          <div className="flex items-center gap-2 text-xs text-foreground/70 font-medium bg-surface/80 backdrop-blur-sm px-3 py-1 rounded-full">
+            <span>{resolution}</span>
+            <span>{fps} FPS</span>
+          </div>
         </div>
 
         {/* Right side controls */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-8 pointer-events-auto">
           {/* Zoom control */}
-          <div className="flex flex-col items-center gap-3 bg-overlay/80 backdrop-blur-sm rounded-full p-4 border border-border/50">
-            <span className="text-xs text-muted-foreground font-medium">ZOOM</span>
-            <input
-              type="range"
-              min="1"
-              max="3"
-              step="0.1"
-              value={zoom}
-              onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
-              className="slider-vertical h-32 w-2 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer"
-              style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-            />
-            <span className="text-xs text-foreground font-bold">{zoom.toFixed(1)}x</span>
+          <div className="flex flex-col items-center gap-3 bg-overlay/80 backdrop-blur-sm rounded-full p-2 border border-border/50">
+            {[0.5, 1, 2, 3].map((zoomLevel) => (
+              <button
+                key={zoomLevel}
+                onClick={() => handleZoomChange(zoomLevel)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                  zoom.toFixed(1) === zoomLevel.toFixed(1)
+                    ? "bg-neon text-background shadow-neon"
+                    : "bg-transparent text-foreground/70 hover:text-foreground"
+                }`}
+              >
+                {zoomLevel}x
+              </button>
+            ))}
           </div>
 
           {/* Exposure control */}
-          <div className="flex flex-col items-center gap-3 bg-overlay/80 backdrop-blur-sm rounded-full p-4 border border-border/50">
-            <span className="text-xs text-muted-foreground font-medium">EXP</span>
-            <input
-              type="range"
-              min="-2"
-              max="2"
-              step="0.1"
-              value={exposure}
-              onChange={(e) => handleExposureChange(parseFloat(e.target.value))}
-              className="slider-vertical h-32 w-2 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer"
-              style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-            />
-            <span className="text-xs text-foreground font-bold">{exposure > 0 ? '+' : ''}{exposure.toFixed(1)}</span>
+          <div className="flex flex-col items-center gap-3 bg-overlay/80 backdrop-blur-sm rounded-full p-2 border border-border/50">
+            <button
+              onClick={() => setShowExposureSlider(!showExposureSlider)}
+              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors bg-transparent text-foreground/70 hover:text-foreground"
+            >
+              EXP
+            </button>
+            {showExposureSlider && (
+              <input
+                type="range"
+                min="-2"
+                max="2"
+                step="0.1"
+                value={exposure}
+                onChange={(e) => handleExposureChange(parseFloat(e.target.value))}
+                className="slider-vertical h-24 w-1 appearance-none bg-surface rounded-full cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-neon [&::-webkit-slider-thumb]:shadow-neon [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-neon [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-neon [&::-moz-range-thumb]:cursor-pointer mt-2"
+                style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+              />
+            )}
           </div>
+        </div>
+
+        {/* Safe frame */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-3/4 h-3/4 border-2 border-foreground/50 rounded-lg" />
         </div>
 
         {/* Center reticle */}
@@ -229,20 +260,35 @@ const CameraCapture = ({ onBack }: CameraCaptureProps) => {
           />
         )}
 
-        {/* Start button (only in setup) */}
-        {captureState === "setup" && (
-          <div className="absolute bottom-0 left-0 right-0 p-8 flex justify-center pointer-events-auto bg-gradient-to-t from-black/50 to-transparent">
+        {/* Bottom bar with controls and shutter */}
+        <div className="absolute bottom-0 left-0 right-0 p-8 flex justify-between items-center pointer-events-auto bg-gradient-to-t from-background/50 to-transparent">
+          <button
+            onClick={toggleFlash}
+            className="w-10 h-10 rounded-full bg-surface/80 backdrop-blur-sm flex items-center justify-center hover:bg-surface transition-colors"
+          >
+            {flashEnabled ? (
+              <Zap className="w-5 h-5 text-neon fill-neon" />
+            ) : (
+              <ZapOff className="w-5 h-5 text-foreground" />
+            )}
+          </button>
+
+          {/* Shutter button (only in setup) */}
+          {captureState === "setup" && (
             <button
               onClick={() => setCaptureState("round1")}
               className="w-20 h-20 rounded-full bg-neon hover:bg-neon/80 flex items-center justify-center shadow-neon transition-all hover:scale-105"
             >
               <Circle className="w-12 h-12 text-background fill-background" />
             </button>
-          </div>
-        )}
+          )}
+          {/* Placeholder for other modes/settings */}
+          <div className="w-10 h-10" />
+        </div>
       </div>
     </div>
   );
 };
 
 export default CameraCapture;
+
