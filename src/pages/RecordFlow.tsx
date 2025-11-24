@@ -5,7 +5,7 @@ import { AngleHeader } from "../components/AngleHeader";
 import AngleGifTutorial from "../components/capture/AngleGifTutorial";
 import { SavePreview } from "../components/SavePreview";
 import { performAutoCheck } from "../utils/autoCheck";
-import { mergeVideos, downloadVideo } from "../utils/videoMerge";
+import { concatVideos } from "../utils/videoConcat";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
@@ -74,16 +74,23 @@ const RecordFlow = () => {
   const processFinalVideo = async (allBlobs: Blob[]) => {
     setIsMerging(true);
     try {
-      toast.info("Merging 3 videos into one...");
-      const merged = await mergeVideos(allBlobs);
-      setFinalBlob(merged);
+      toast.info("Processing final video...");
+      const concatenated = await concatVideos(allBlobs);
+      setFinalBlob(concatenated);
       
       // Auto-download to device
-      downloadVideo(merged, `3d-scan-${Date.now()}.webm`);
+      const url = URL.createObjectURL(concatenated);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `3d-scan-${Date.now()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
-      toast.success("3D Scan merged and downloaded!");
+      toast.success("3D Scan ready and downloaded!");
     } catch (e) {
-      toast.error("Failed to merge videos.");
+      toast.error("Failed to process videos.");
       console.error(e);
     } finally {
       setIsMerging(false);
@@ -140,7 +147,7 @@ const RecordFlow = () => {
           <div className="text-white flex flex-col items-center p-6 bg-black/50 rounded-2xl border border-white/20">
             <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 animate-spin mb-4 text-primary" />
             <p className="text-base sm:text-lg font-medium">
-              {isChecking ? "Analyzing recording quality..." : "Merging 3 videos..."}
+              {isChecking ? "Analyzing recording quality..." : "Processing videos..."}
             </p>
             {isMerging && (
               <p className="text-xs sm:text-sm text-white/60 mt-2">This may take a moment</p>

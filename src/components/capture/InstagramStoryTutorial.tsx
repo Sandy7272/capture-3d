@@ -79,7 +79,7 @@ const InstagramStoryTutorial = ({ onComplete }: InstagramStoryTutorialProps) => 
   return (
     <div className={`fixed inset-0 bg-gradient-to-br ${slide.bgColor} z-50 flex flex-col text-white transition-all duration-500`}>
       {/* Progress bars (Instagram Story Style) */}
-      <div className="flex gap-1 p-3 pt-safe-or-6">
+      <div className="flex gap-1 p-3 pt-6">
         {slides.map((_, index) => (
           <div
             key={index}
