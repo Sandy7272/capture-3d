@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { CameraRecorder } from "../components/CameraRecorder";
-import { AngleHeader } from "../components/AngleHeader";
 import AngleGifTutorial from "../components/capture/AngleGifTutorial";
 import { SavePreview } from "../components/SavePreview";
 import { performAutoCheck } from "../utils/autoCheck";
@@ -22,8 +21,7 @@ const RecordFlow = () => {
   const [isMerging, setIsMerging] = useState(false);
   const [checkError, setCheckError] = useState<string[] | null>(null);
   const [finalBlob, setFinalBlob] = useState<Blob | null>(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [status, setStatus] = useState("idle");
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   // Lock orientation to landscape when camera is active
   useEffect(() => {
@@ -64,8 +62,13 @@ const RecordFlow = () => {
 
     // 3. Decide next step
     if (angleStep < 3) {
-      setAngleStep(prev => (prev + 1) as 1 | 2 | 3);
-      setShowGifTutorial(true); // Show GIF tutorial for NEXT angle
+      // Add smooth transition between angles
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setAngleStep(prev => (prev + 1) as 1 | 2 | 3);
+        setShowGifTutorial(true); // Show GIF tutorial for NEXT angle
+        setIsTransitioning(false);
+      }, 500);
     } else {
       // Finished all 3 angles -> Merge!
       processFinalVideo(newBlobs);
@@ -143,7 +146,14 @@ const RecordFlow = () => {
         />
       )}
 
-      {/* 3. Checking/Merging Overlay (Loading state) */}
+      {/* 3. Transition Overlay */}
+      {isTransitioning && (
+        <div className="fixed inset-0 z-40 bg-black flex items-center justify-center">
+          <Loader2 className="w-10 h-10 animate-spin text-white/60" />
+        </div>
+      )}
+
+      {/* 4. Checking/Merging Overlay (Loading state) */}
       {(isChecking || isMerging) && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-sm">
           <div className="text-white flex flex-col items-center p-6 bg-black/50 rounded-2xl border border-white/20">
@@ -158,24 +168,16 @@ const RecordFlow = () => {
         </div>
       )}
 
-      {/* 4. Main UI (Only show when GIF tutorial is closed) */}
+      {/* 5. Main UI (Only show when GIF tutorial is closed) */}
       {!showGifTutorial && (
-        <>
-          <AngleHeader currentAngle={angleStep} elapsed={elapsed} status={status} />
-          
-          <div className="flex-1 relative">
-  {/* Key prop forces CameraRecorder to completely reset when angle changes */}
-  <CameraRecorder
-    key={angleStep}
-    {...({
-      onRecordingComplete: handleRecordingComplete,
-      minDuration: 30,
-      angleLabel: angleStep === 1 ? "Middle" : angleStep === 2 ? "Top" : "Bottom",
-      onStatusChange: setStatus,
-    } as any)}
-  />
-</div>
-        </>
+        <div className="flex-1 relative">
+          {/* Key prop forces CameraRecorder to completely reset when angle changes */}
+          <CameraRecorder
+            key={angleStep}
+            angleLabel={angleStep === 1 ? "Middle Angle" : angleStep === 2 ? "Top Angle" : "Bottom Angle"}
+            onRecordingComplete={handleRecordingComplete}
+          />
+        </div>
       )}
     </div>
   );

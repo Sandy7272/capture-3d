@@ -37,7 +37,7 @@ const OrientationLock = ({ children }: OrientationLockProps) => {
 
   if (isPortrait) {
     return (
-      <div className="absolute inset-0 bg-background/90 backdrop-blur-md z- flex flex-col items-center justify-center text-foreground p-6 text-center">
+      <div className="absolute inset-0 bg-background/90 backdrop-blur-md z-50 flex flex-col items-center justify-center text-foreground p-6 text-center">
         <RotateCcw className="w-12 h-12 mb-4 animate-pulse text-primary" />
         <h2 className="text-xl font-bold mb-2">Rotate Device</h2>
         <p className="text-muted-foreground">Please use landscape mode.</p>
