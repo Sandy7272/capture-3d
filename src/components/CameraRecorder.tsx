@@ -95,11 +95,16 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
       setRecordedBlob(blob);
       setPreviewUrl(URL.createObjectURL(blob));
       setStatus("review");
+      // Haptic feedback on stop
+      if (navigator.vibrate) navigator.vibrate(200);
     };
 
     mediaRecorderRef.current = recorder;
     recorder.start(1000);
     setStatus("recording");
+    
+    // Haptic feedback on start
+    if (navigator.vibrate) navigator.vibrate(100);
   };
 
   const handleStop = () => {
