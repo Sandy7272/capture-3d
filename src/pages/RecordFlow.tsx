@@ -62,6 +62,9 @@ const RecordFlow = () => {
 
     // 3. Decide next step
     if (angleStep < 3) {
+      // Haptic feedback for angle transition
+      if (navigator.vibrate) navigator.vibrate([50, 100, 50]);
+      
       // Add smooth transition between angles
       setIsTransitioning(true);
       setTimeout(() => {
