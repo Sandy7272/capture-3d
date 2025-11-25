@@ -63,10 +63,18 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
     };
   }, []);
 
+  const handleStop = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
   // --- 2. AUTO STOP AT 30s ---
   useEffect(() => {
     if (status === "recording" && elapsed >= 30) {
-      handleStop();
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
       if (navigator.vibrate) navigator.vibrate(200);
     }
   }, [elapsed, status]);
@@ -105,12 +113,6 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
     
     // Haptic feedback on start
     if (navigator.vibrate) navigator.vibrate(100);
-  };
-
-  const handleStop = () => {
-    if (mediaRecorderRef.current?.state === "recording") {
-      mediaRecorderRef.current.stop();
-    }
   };
 
   const handleRetake = () => {
