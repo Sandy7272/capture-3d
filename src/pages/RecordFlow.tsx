@@ -3,25 +3,29 @@ import { useNavigate } from "react-router-dom";
 import { CameraRecorder } from "../components/CameraRecorder";
 import AngleGifTutorial from "../components/capture/AngleGifTutorial";
 import { SavePreview } from "../components/SavePreview";
+import { SuccessCelebration } from "../components/capture/SuccessCelebration";
+import { AngleReviewScreen } from "../components/capture/AngleReviewScreen";
 import { performAutoCheck } from "../utils/autoCheck";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, CheckCircle2 } from "lucide-react";
 
 const RecordFlow = () => {
   const navigate = useNavigate();
   
   // State Management
   const [angleStep, setAngleStep] = useState<1 | 2 | 3>(1); // 1=Middle, 2=Top, 3=Bottom
-  const [blobs, setBlobs] = useState<Blob[]>([]);
+  const [blobs, setBlobs] = useState<(Blob | null)[]>([null, null, null]);
   const [showGifTutorial, setShowGifTutorial] = useState(true); // Show GIF tutorial before each angle
   const [isChecking, setIsChecking] = useState(false);
   const [isMerging, setIsMerging] = useState(false);
   const [checkError, setCheckError] = useState<string[] | null>(null);
   const [finalBlob, setFinalBlob] = useState<Blob | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showReview, setShowReview] = useState(false);
 
   // Lock orientation to landscape when camera is active
   useEffect(() => {
@@ -56,8 +60,9 @@ const RecordFlow = () => {
       checkResult.warnings.forEach(w => toast.warning(w));
     }
 
-    // 2. Store Blob
-    const newBlobs = [...blobs, blob];
+    // 2. Store Blob at current angle index
+    const newBlobs = [...blobs];
+    newBlobs[angleStep - 1] = blob;
     setBlobs(newBlobs);
 
     // 3. Decide next step
@@ -73,17 +78,23 @@ const RecordFlow = () => {
         setIsTransitioning(false);
       }, 500);
     } else {
-      // Finished all 3 angles -> Merge!
-      processFinalVideo(newBlobs);
+      // Finished all 3 angles -> Show success celebration
+      setShowSuccess(true);
     }
   };
 
   // Logic: Merge all segments into one
-  const processFinalVideo = async (allBlobs: Blob[]) => {
+  const processFinalVideo = async () => {
+    const validBlobs = blobs.filter((b): b is Blob => b !== null);
+    if (validBlobs.length !== 3) {
+      toast.error("Missing angle recordings");
+      return;
+    }
+
     setIsMerging(true);
     try {
       toast.info("Processing final video...");
-      const concatenated = await concatVideos(allBlobs);
+      const concatenated = await concatVideos(validBlobs);
       setFinalBlob(concatenated);
       
       // Auto-download to device
@@ -105,6 +116,12 @@ const RecordFlow = () => {
     }
   };
 
+  const handleRetakeAngle = (index: number) => {
+    setShowReview(false);
+    setAngleStep((index + 1) as 1 | 2 | 3);
+    setShowGifTutorial(true);
+  };
+
   const handleGifTutorialStart = () => {
     setShowGifTutorial(false);
   };
@@ -117,6 +134,26 @@ const RecordFlow = () => {
   // If processing is done, show the Final Preview Page
   if (finalBlob) {
     return <SavePreview videoBlob={finalBlob} onBack={() => navigate("/")} />;
+  }
+
+  // Show success celebration
+  if (showSuccess) {
+    return <SuccessCelebration onContinue={() => {
+      setShowSuccess(false);
+      setShowReview(true);
+    }} />;
+  }
+
+  // Show review screen
+  if (showReview) {
+    return (
+      <AngleReviewScreen
+        blobs={blobs}
+        angleLabels={["Middle Angle", "Top Angle", "Bottom Angle"]}
+        onRetake={handleRetakeAngle}
+        onContinue={processFinalVideo}
+      />
+    );
   }
 
   return (
@@ -174,6 +211,28 @@ const RecordFlow = () => {
       {/* 5. Main UI (Only show when GIF tutorial is closed) */}
       {!showGifTutorial && (
         <div className="flex-1 relative">
+          {/* Progress Indicator */}
+          <div className="absolute top-4 left-4 z-30 bg-black/60 backdrop-blur-md rounded-lg px-4 py-2 border border-white/10">
+            <div className="flex items-center gap-3">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center gap-2">
+                  {blobs[step - 1] ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                  ) : step === angleStep ? (
+                    <div className="w-5 h-5 rounded-full border-2 border-primary animate-pulse" />
+                  ) : (
+                    <div className="w-5 h-5 rounded-full border-2 border-white/30" />
+                  )}
+                  <span className={`text-xs font-medium ${
+                    blobs[step - 1] ? "text-green-400" : step === angleStep ? "text-white" : "text-white/40"
+                  }`}>
+                    {step === 1 ? "Middle" : step === 2 ? "Top" : "Bottom"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Key prop forces CameraRecorder to completely reset when angle changes */}
           <CameraRecorder
             key={angleStep}

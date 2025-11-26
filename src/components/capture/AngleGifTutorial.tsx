@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Play, Volume2 } from "lucide-react";
+import { Play, Volume2, SkipForward } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface AngleGifTutorialProps {
   angle: "middle" | "top" | "bottom";
@@ -46,6 +47,15 @@ const angleData = {
 const AngleGifTutorial = ({ angle, onStart }: AngleGifTutorialProps) => {
   const data = angleData[angle];
   const [tutorialState, setTutorialState] = useState<"idle" | "speaking" | "finished">("idle");
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  // Check if user wants to skip tutorials
+  useEffect(() => {
+    const skipTutorials = localStorage.getItem("skipAngleTutorials");
+    if (skipTutorials === "true") {
+      onStart();
+    }
+  }, [onStart]);
 
   const speakInstructions = useCallback(() => {
     if ('speechSynthesis' in window) {
@@ -87,6 +97,13 @@ const AngleGifTutorial = ({ angle, onStart }: AngleGifTutorialProps) => {
     };
   }, []);
 
+  const handleStart = () => {
+    if (dontShowAgain) {
+      localStorage.setItem("skipAngleTutorials", "true");
+    }
+    onStart();
+  };
+
   const renderActionButton = () => {
     switch (tutorialState) {
       case "idle":
@@ -111,7 +128,7 @@ const AngleGifTutorial = ({ angle, onStart }: AngleGifTutorialProps) => {
       case "finished":
         return (
           <Button
-            onClick={onStart}
+            onClick={handleStart}
             size="lg"
             className="w-full h-14 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/30 transition-all"
           >
@@ -132,15 +149,37 @@ const AngleGifTutorial = ({ angle, onStart }: AngleGifTutorialProps) => {
 
         <div className="relative w-full max-w-5xl aspect-video rounded-2xl overflow-hidden shadow-[0_0_40px_-10px_rgba(0,0,0,0.7)] border border-white/10 bg-black">
           
-          <img
-            src={data.gifUrl}
-            alt={`${data.title} tutorial`}
-            className="w-full h-full object-cover opacity-95"
-            onError={(e) => {
-              e.currentTarget.src =
-                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Crect width='100%25' height='100%25' fill='%2318181b'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%2352525b'%3E%F0%9F%8E%A5 Tutorial Demo%3C/text%3E%3C/svg%3E";
-            }}
-          />
+          {/* Animated SVG Tutorial Placeholder */}
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
+            <svg width="400" height="300" viewBox="0 0 400 300" className="opacity-70">
+              {/* Phone Icon */}
+              <rect x="180" y="120" width="40" height="70" rx="5" fill="currentColor" className="text-white/80" />
+              <circle cx="200" cy="200" r="3" fill="currentColor" className="text-white/60" />
+              
+              {/* Object in center */}
+              <circle cx="200" cy="150" r="30" fill="currentColor" className="text-green-400/60" />
+              
+              {/* Rotation path */}
+              <circle cx="200" cy="150" r="80" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5,5" className="text-white/30" />
+              
+              {/* Animated phone position */}
+              <g className="animate-[spin_4s_linear_infinite]" style={{ transformOrigin: "200px 150px" }}>
+                <rect x="270" y="120" width="30" height="50" rx="4" fill="currentColor" className="text-primary" />
+                <circle cx="285" cy="180" r="2" fill="currentColor" className="text-primary-foreground" />
+              </g>
+
+              {/* Angle indicator */}
+              {angle === "top" && (
+                <path d="M 200 70 L 200 100 M 195 105 L 200 100 L 205 105" stroke="currentColor" strokeWidth="2" className="text-green-400" />
+              )}
+              {angle === "bottom" && (
+                <path d="M 200 230 L 200 200 M 195 195 L 200 200 L 205 195" stroke="currentColor" strokeWidth="2" className="text-green-400" />
+              )}
+              {angle === "middle" && (
+                <line x1="150" y1="150" x2="180" y2="150" stroke="currentColor" strokeWidth="2" className="text-green-400" />
+              )}
+            </svg>
+          </div>
 
           {/* Label */}
           <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-lg text-xs font-mono text-white border border-white/10">
@@ -187,6 +226,30 @@ const AngleGifTutorial = ({ angle, onStart }: AngleGifTutorialProps) => {
         {/* ACTION BUTTON */}
         <div className="mt-10 pt-6 border-t border-white/10">
           {renderActionButton()}
+          
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <Checkbox
+              id="skip-tutorial"
+              checked={dontShowAgain}
+              onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
+            />
+            <label
+              htmlFor="skip-tutorial"
+              className="text-xs text-muted-foreground cursor-pointer"
+            >
+              Don't show angle tutorials again
+            </label>
+          </div>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleStart}
+            className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <SkipForward className="w-3 h-3 mr-1" /> Skip Tutorial
+          </Button>
+
           <p className="text-center text-xs text-muted-foreground mt-3">
             Recording takes ~30 seconds
           </p>

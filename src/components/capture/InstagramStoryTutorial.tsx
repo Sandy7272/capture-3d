@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { X, Check, XCircle } from "lucide-react";
+import { X, Check, XCircle, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 // White placeholder image
@@ -29,6 +30,17 @@ interface InstagramStoryTutorialProps {
 const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialProps) => {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  // Check if user wants to skip
+  useEffect(() => {
+    if (!isOpen) return;
+    const skipTutorials = localStorage.getItem("skipStoryTutorial");
+    if (skipTutorials === "true") {
+      onComplete();
+      return;
+    }
+  }, [isOpen, onComplete]);
 
   // Reset on open
   useEffect(() => {
@@ -63,8 +75,15 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
       setIndex((prev) => prev + 1);
       setProgress(0);
     } else {
-      onComplete();
+      handleComplete();
     }
+  };
+
+  const handleComplete = () => {
+    if (dontShowAgain) {
+      localStorage.setItem("skipStoryTutorial", "true");
+    }
+    onComplete();
   };
 
   const current = topics[index];
@@ -86,16 +105,38 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
         ))}
       </div>
 
-      {/* Close button */}
-      <div className="absolute top-8 right-4 z-20">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onComplete}
-          className="text-white hover:bg-white/20"
-        >
-          <X className="w-6 h-6" />
-        </Button>
+      {/* Header Controls */}
+      <div className="absolute top-8 left-4 right-4 z-20 flex items-center justify-between">
+        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-2 rounded-lg">
+          <Checkbox
+            id="skip-story"
+            checked={dontShowAgain}
+            onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
+            className="border-white data-[state=checked]:bg-white data-[state=checked]:text-black"
+          />
+          <label htmlFor="skip-story" className="text-xs text-white cursor-pointer">
+            Don't show again
+          </label>
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleComplete}
+            className="text-white hover:bg-white/20"
+          >
+            <SkipForward className="w-4 h-4 mr-1" /> Skip
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleComplete}
+            className="text-white hover:bg-white/20"
+          >
+            <X className="w-6 h-6" />
+          </Button>
+        </div>
       </div>
 
       {/* MAIN CONTENT */}

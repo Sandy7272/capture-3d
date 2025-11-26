@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { CountdownOverlay } from "./capture/CountdownOverlay";
 
 const useScreenOrientation = () => {
   const [isLandscape, setIsLandscape] = useState(window.innerWidth > window.innerHeight);
@@ -30,10 +31,11 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const [status, setStatus] = useState<"idle" | "recording" | "review">("idle");
+  const [status, setStatus] = useState<"countdown" | "idle" | "recording" | "review">("countdown");
   const [elapsed, setElapsed] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
   
   const [hasZoom, setHasZoom] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -76,7 +78,10 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
       if (mediaRecorderRef.current?.state === "recording") {
         mediaRecorderRef.current.stop();
       }
-      if (navigator.vibrate) navigator.vibrate(200);
+      // Enhanced time-up feedback
+      if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      setShowFlash(true);
+      setTimeout(() => setShowFlash(false), 300);
     }
   }, [elapsed, status]);
 
@@ -147,6 +152,16 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
 
   return (
     <div className="fixed inset-0 w-full h-[100dvh] bg-black overflow-hidden" style={{ touchAction: 'none' }}>
+      {/* Countdown Overlay */}
+      {status === "countdown" && (
+        <CountdownOverlay onComplete={() => setStatus("idle")} />
+      )}
+
+      {/* Time-up Flash Effect */}
+      {showFlash && (
+        <div className="absolute inset-0 z-50 bg-white animate-pulse pointer-events-none" />
+      )}
+
       {!isLandscape && (
         <div className="absolute inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center text-white gap-4">
           <RotateCw className="w-12 h-12 animate-spin" />
