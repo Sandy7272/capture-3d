@@ -1,8 +1,8 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-
-import { Download, Upload, ArrowLeft } from "lucide-react";
+import { Download, RotateCcw, CheckCircle, Play } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface SavePreviewProps {
   videoBlob: Blob;
@@ -10,65 +10,74 @@ interface SavePreviewProps {
 }
 
 export const SavePreview = ({ videoBlob, onBack }: SavePreviewProps) => {
-  const videoUrl = useRef(URL.createObjectURL(videoBlob)).current;
-  const [isUploading, setIsUploading] = useState(false);
+  const videoUrl = useMemo(() => URL.createObjectURL(videoBlob), [videoBlob]);
+  const [isSaved, setIsSaved] = useState(false);
 
   const handleDownload = () => {
     const a = document.createElement("a");
     a.href = videoUrl;
-    a.download = `3d-capture-merged-${Date.now()}.webm`;
+    a.download = `3d-capture-scan-${Date.now()}.mp4`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    toast.success("Download started");
-  };
-
-  const handleUpload = async () => {
-    setIsUploading(true);
-    // Simulate API upload
-    setTimeout(() => {
-      setIsUploading(false);
-      toast.success("Uploaded successfully!");
-    }, 2000);
+    toast.success("Video saved to gallery!");
+    setIsSaved(true);
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <div className="p-4 flex items-center border-b border-border bg-background/50 backdrop-blur-md sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <h1 className="ml-2 font-semibold text-lg">Review Capture</h1>
-      </div>
-
-      {/* Video Area */}
-      <div className="flex-1 flex items-center justify-center bg-black/5 p-4 overflow-hidden">
-        <div className="relative w-full max-w-4xl aspect-video bg-black rounded-lg shadow-2xl overflow-hidden border border-border/50">
-          <video 
-            src={videoUrl} 
-            controls 
-            className="w-full h-full object-contain"
-          />
+    <div className="fixed inset-0 bg-black flex flex-col h-full w-full">
+      
+      {/* FULL SCREEN VIDEO PREVIEW */}
+      <div className="flex-1 relative w-full h-full bg-black">
+        <video 
+          src={videoUrl} 
+          autoPlay 
+          loop 
+          playsInline 
+          controls={true} // Allow user to scrub if needed
+          className="w-full h-full object-contain"
+        />
+        
+        {/* TOP OVERLAY: TITLE */}
+        <div className="absolute top-6 left-0 right-0 flex justify-center pointer-events-none">
+           <div className="bg-black/60 backdrop-blur-md text-white px-6 py-2 rounded-full text-sm font-semibold border border-white/10 shadow-lg">
+             Preview Scan
+           </div>
         </div>
       </div>
 
-      {/* Action Area */}
-      <div className="bg-card border-t border-border p-6 space-y-6 shadow-lg-up">
-        {/* Actions */}
-        <div className="grid grid-cols-2 gap-4">
-          <Button variant="outline" onClick={handleDownload} className="w-full py-6 text-base">
-            <Download className="mr-2 w-4 h-4" /> Download
-          </Button>
+      {/* BOTTOM OVERLAY: ACTION BUTTONS */}
+      {/* Positioned absolutely at the bottom over the video content */}
+      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black via-black/80 to-transparent">
+        <div className="flex gap-4 max-w-lg mx-auto">
+          
+          {/* RETAKE BUTTON */}
           <Button 
-            onClick={handleUpload} 
-            disabled={isUploading} 
-            className="w-full py-6 text-base bg-primary text-primary-foreground hover:bg-primary/90 font-semibold"
+            variant="outline" 
+            onClick={onBack} 
+            className="flex-1 h-14 bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 hover:text-white rounded-xl text-base font-semibold transition-all active:scale-95"
           >
-            {isUploading ? "Uploading..." : (
-              <>
-                <Upload className="mr-2 w-4 h-4" /> Upload for 3D
-              </>
+            <RotateCcw className="mr-2 w-5 h-5" /> Retake
+          </Button>
+
+          {/* SAVE BUTTON */}
+          <Button 
+            onClick={handleDownload} 
+            className={cn(
+                "flex-1 h-14 text-base font-bold rounded-xl transition-all active:scale-95 shadow-lg",
+                isSaved 
+                    ? "bg-zinc-800 text-green-400 hover:bg-zinc-800 cursor-default border border-green-500/30" 
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+          >
+            {isSaved ? (
+                <>
+                    <CheckCircle className="mr-2 w-5 h-5" /> Saved
+                </>
+            ) : (
+                <>
+                    <Download className="mr-2 w-5 h-5" /> Save Video
+                </>
             )}
           </Button>
         </div>

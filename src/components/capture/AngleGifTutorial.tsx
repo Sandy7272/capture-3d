@@ -1,258 +1,236 @@
-import { useEffect, useState, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Play, Volume2, SkipForward } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
+import React, { FC, useEffect, useState, useCallback, useRef } from "react";
+import {
+  Volume2,
+  VolumeX,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
 
 interface AngleGifTutorialProps {
-  angle: "middle" | "top" | "bottom";
-  onStart: () => void;
+  angle: (typeof angleOrder)[number];
+  onNext: () => void;
+  onPrev: () => void;
 }
+
+const angleOrder = ["middle", "top", "bottom"] as const;
 
 const angleData = {
   middle: {
     title: "Middle Angle",
-    subtitle: "Eye-level 360° capture",
-    steps: [
-      "Keep phone steady at chest height",
-      "Walk a full circle around the object",
-      "Keep the object centered at all times",
-      "Move slowly and smoothly",
-    ],
-    gifUrl: "/assets/tutorials/middle-angle.gif",
+    subtitle: "Camera at Chest Level",
+    video: "/assets/tutorials/middle.mp4",
+    speak: "This is the middle angle. Hold your phone at chest height and move around the object slowly.",
+    lines: ["Hold chest height", "Move in full circle", "Keep object centered"],
   },
   top: {
     title: "Top Angle",
-    subtitle: "High-angle 45° capture",
-    steps: [
-      "Raise phone above the object",
-      "Look down at a 45-degree angle",
-      "Walk a full circle around the object",
-      "Ensure top surfaces are visible",
-    ],
-    gifUrl: "/assets/tutorials/top-angle.gif",
+    subtitle: "Camera Above Object",
+    video: "/assets/tutorials/top.mp4",
+    speak: "This is the top angle. Hold your phone above the object at a downward angle and move in a full circle.",
+    lines: ["Raise phone above object", "Tilt 45° down", "Walk full circle"],
   },
   bottom: {
     title: "Bottom Angle",
-    subtitle: "Low-angle 45° capture",
-    steps: [
-      "Lower phone below the object",
-      "Look up at a 45-degree angle",
-      "Walk a full circle around the object",
-      "Capture the base details",
-    ],
-    gifUrl: "/assets/tutorials/bottom-angle.gif",
+    subtitle: "Camera Below Object",
+    video: "/assets/tutorials/bottom.mp4",
+    speak: "This is the bottom angle. Hold your phone low and tilt upward while moving around the object.",
+    lines: ["Phone lower than object", "Tilt 45° up", "Walk full circle"],
   },
 };
 
-const AngleGifTutorial = ({ angle, onStart }: AngleGifTutorialProps) => {
+const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) => {
+  const step = angleOrder.indexOf(angle);
   const data = angleData[angle];
-  const [tutorialState, setTutorialState] = useState<"idle" | "speaking" | "finished">("idle");
-  const [dontShowAgain, setDontShowAgain] = useState(false);
 
-  // Check if user wants to skip tutorials
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  
+  const [isMuted, setIsMuted] = useState(false);
+  const isMutedRef = useRef(false); // Ref to access current mute state inside callbacks
+
+  const [state, setState] = useState<"idle" | "speaking" | "finished">("idle");
+  const [videoLoaded, setVideoLoaded] = useState(false);
+
+  // Sync ref with state
   useEffect(() => {
-    const skipTutorials = localStorage.getItem("skipAngleTutorials");
-    if (skipTutorials === "true") {
-      onStart();
-    }
-  }, [onStart]);
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
+  // --- Voice Logic ---
   const speakInstructions = useCallback(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); // Clear queue
-
-      const textToSpeak = [
-        data.title,
-        data.subtitle,
-        ...data.steps,
-      ].join(". ");
-
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.lang = "en-US";
-      utterance.rate = 1;
-
-      utterance.onstart = () => setTutorialState("speaking");
-      utterance.onend = () => setTutorialState("finished");
-      utterance.onerror = () => {
-        console.error("Speech synthesis error");
-        setTutorialState("finished"); // Allow user to proceed even if speech fails
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } else {
-      console.warn("Speech synthesis not supported.");
-      setTutorialState("finished"); // If not supported, just show the button.
+    if (!("speechSynthesis" in window)) {
+      // If no speech support, rely on the 10s timer or finish immediately
+      return; 
     }
-  }, [data]);
 
-  useEffect(() => {
-    if (screen.orientation && "lock" in screen.orientation) {
-      // @ts-ignore
-      screen.orientation.lock("landscape").catch(() => {});
+    window.speechSynthesis.cancel();
+
+    if (isMutedRef.current) {
+      return;
     }
-    return () => {
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+
+    const msg = new SpeechSynthesisUtterance(data.speak);
+    msg.rate = 1.0;
+    
+    msg.onstart = () => setState("speaking");
+    
+    msg.onend = () => {
+      // Only finish if NOT muted. 
+      // If muted, we wait for the 10s timer instead.
+      if (!isMutedRef.current) {
+        setState("finished");
       }
     };
-  }, []);
 
-  const handleStart = () => {
-    if (dontShowAgain) {
-      localStorage.setItem("skipAngleTutorials", "true");
-    }
-    onStart();
-  };
+    msg.onerror = () => {
+       // On error, we rely on the timer to eventually unlock the button
+    };
 
-  const renderActionButton = () => {
-    switch (tutorialState) {
-      case "idle":
-        return (
-          <Button
-            onClick={speakInstructions}
-            size="lg"
-            className="w-full h-14 text-lg font-semibold rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-foreground shadow-lg transition-all"
-          >
-            <Volume2 className="w-5 h-5 mr-2" /> Play Instructions
-          </Button>
-        );
-      case "speaking":
-        return (
-          <div className="h-14 flex items-center justify-center w-full">
-            <p className="text-center text-muted-foreground animate-pulse flex items-center gap-2">
-              <Volume2 className="w-5 h-5" />
-              Playing instructions...
-            </p>
-          </div>
-        );
-      case "finished":
-        return (
-          <Button
-            onClick={handleStart}
-            size="lg"
-            className="w-full h-14 text-lg font-semibold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg hover:shadow-primary/30 transition-all"
-          >
-            <Play className="w-5 h-5 mr-2" /> Start Recording
-          </Button>
-        );
+    window.speechSynthesis.speak(msg);
+  }, [data.speak]);
+
+  // --- Effect: Step Change Lifecycle ---
+  useEffect(() => {
+    setVideoLoaded(false);
+    setState("speaking"); // Initially assume speaking/waiting
+    
+    // 1. Start Audio
+    speakInstructions();
+
+    // 2. Start 10s Fallback Timer
+    // This ensures the button appears after 10s even if muted or audio fails
+    const timer = setTimeout(() => {
+      setState("finished");
+    }, 10000);
+
+    return () => {
+      clearTimeout(timer);
+      window.speechSynthesis.cancel();
+    };
+  }, [step, speakInstructions]);
+
+  const toggleMute = () => {
+    const newMuteState = !isMuted;
+    setIsMuted(newMuteState);
+    
+    if (newMuteState) {
+      // If muting, stop audio. 
+      // NOTE: We do NOT set state to "finished" here. 
+      // User must wait for the 10s timer.
+      window.speechSynthesis.cancel();
+    } else {
+      // If unmuting, we could replay, but user might just want to hear remaining time?
+      // For simplicity, we just unmute. 
+      // If they want to hear it, they can reset the step (Previous -> Next).
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black text-foreground flex overflow-hidden font-sans">
-      
-      {/* LEFT PANEL — GIF / PREVIEW */}
-      <div className="flex-1 flex items-center justify-center relative p-6">
-        
-        {/* Cinematic Background Glow */}
-        <div className="absolute inset-0 bg-gradient-to-br from-zinc-900/60 to-black/80 pointer-events-none"></div>
+    <div className="w-full h-screen bg-[#0A0A0A] text-white flex flex-row overflow-hidden font-sans">
 
-        <div className="relative w-full max-w-5xl aspect-video rounded-2xl overflow-hidden shadow-[0_0_40px_-10px_rgba(0,0,0,0.7)] border border-white/10 bg-black">
-          
-          {/* Animated SVG Tutorial Placeholder */}
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-900 to-black">
-            <svg width="400" height="300" viewBox="0 0 400 300" className="opacity-70">
-              {/* Phone Icon */}
-              <rect x="180" y="120" width="40" height="70" rx="5" fill="currentColor" className="text-white/80" />
-              <circle cx="200" cy="200" r="3" fill="currentColor" className="text-white/60" />
-              
-              {/* Object in center */}
-              <circle cx="200" cy="150" r="30" fill="currentColor" className="text-green-400/60" />
-              
-              {/* Rotation path */}
-              <circle cx="200" cy="150" r="80" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5,5" className="text-white/30" />
-              
-              {/* Animated phone position */}
-              <g className="animate-[spin_4s_linear_infinite]" style={{ transformOrigin: "200px 150px" }}>
-                <rect x="270" y="120" width="30" height="50" rx="4" fill="currentColor" className="text-primary" />
-                <circle cx="285" cy="180" r="2" fill="currentColor" className="text-primary-foreground" />
-              </g>
-
-              {/* Angle indicator */}
-              {angle === "top" && (
-                <path d="M 200 70 L 200 100 M 195 105 L 200 100 L 205 105" stroke="currentColor" strokeWidth="2" className="text-green-400" />
-              )}
-              {angle === "bottom" && (
-                <path d="M 200 230 L 200 200 M 195 195 L 200 200 L 205 195" stroke="currentColor" strokeWidth="2" className="text-green-400" />
-              )}
-              {angle === "middle" && (
-                <line x1="150" y1="150" x2="180" y2="150" stroke="currentColor" strokeWidth="2" className="text-green-400" />
-              )}
-            </svg>
-          </div>
-
-          {/* Label */}
-          <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-lg text-xs font-mono text-white border border-white/10">
+      {/* LEFT SIDE: PREVIEW */}
+      <div className="w-[60%] flex justify-center items-center px-4 bg-[#050505]">
+        <div className="relative w-full max-w-lg rounded-2xl bg-gradient-to-br from-[#111] to-[#0A0A0A] border border-[#222] p-4 shadow-2xl">
+          <div className="absolute top-4 left-4 px-3 py-1 rounded-full border border-[#333] text-[10px] tracking-wider text-white/80 z-10 bg-black/40 backdrop-blur-md">
             TUTORIAL PREVIEW
           </div>
 
-          {/* Bottom Fade */}
-          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/70 to-transparent pointer-events-none"></div>
+          <video
+            ref={videoRef}
+            key={data.video}
+            autoPlay
+            muted
+            loop
+            playsInline
+            src={data.video}
+            onLoadedData={() => setVideoLoaded(true)}
+            className={`
+              w-full h-[200px] sm:h-[220px] md:h-[240px] lg:h-[280px]
+              object-contain mt-4 transition-opacity duration-500
+              ${videoLoaded ? 'opacity-100' : 'opacity-0'} 
+            `}
+          />
         </div>
       </div>
 
-      {/* RIGHT PANEL — TEXT / STEPS / BUTTON */}
-      <div className="w-[420px] max-w-[38%] bg-[#0f0f11] border-l border-white/10 flex flex-col p-10 shadow-xl overflow-hidden">
+      {/* RIGHT SIDE: UI PANEL - COMPACT */}
+      <div className="w-[40%] bg-[#0A0A0A] border-l border-[#222] px-5 py-6 flex flex-col justify-center relative">
 
-        {/* HEADER */}
-        <div className="mb-8">
-          <div className="px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold uppercase tracking-wider inline-flex">
-            Step {angle === "middle" ? "1" : angle === "top" ? "2" : "3"} of 3
-          </div>
-
-          <h1 className="text-4xl font-bold mt-4 text-white tracking-tight drop-shadow-md">
-            {data.title}
-          </h1>
-
-          <p className="text-muted-foreground text-lg mt-1">
-            {data.subtitle}
-          </p>
-        </div>
-
-        {/* STEPS */}
-        <div className="flex-1 overflow-y-auto pr-2 space-y-6">
-          {data.steps.map((step, index) => (
-            <div key={index} className="flex gap-4 items-start">
-              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold border border-white/10">
-                {index + 1}
-              </div>
-              <p className="text-base text-muted-foreground leading-relaxed">
-                {step}
-              </p>
-            </div>
+        {/* TOP SEGMENTED PROGRESS BAR */}
+        <div className="flex gap-1.5 mb-6">
+          {[0, 1, 2].map((i) => (
+            <div 
+              key={i} 
+              className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
+                i <= step ? "bg-[#2DFFA7]" : "bg-[#222]"
+              }`} 
+            />
           ))}
         </div>
 
-        {/* ACTION BUTTON */}
-        <div className="mt-10 pt-6 border-t border-white/10">
-          {renderActionButton()}
-          
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <Checkbox
-              id="skip-tutorial"
-              checked={dontShowAgain}
-              onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
-            />
-            <label
-              htmlFor="skip-tutorial"
-              className="text-xs text-muted-foreground cursor-pointer"
-            >
-              Don't show angle tutorials again
-            </label>
+        {/* HEADER: STEP BADGE + MUTE */}
+        <div className="flex justify-between items-start mb-4">
+          <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[#2DFFA7]/10 border border-[#2DFFA7]/20 text-[#2DFFA7] text-[10px] font-bold tracking-wide uppercase">
+            Step {step + 1} of 3
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleStart}
-            className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
+          <button 
+            onClick={toggleMute} 
+            className="p-1.5 -mr-1.5 text-[#777] hover:text-white transition-colors rounded-full hover:bg-[#111]"
+            title={isMuted ? "Unmute" : "Mute"}
           >
-            <SkipForward className="w-3 h-3 mr-1" /> Skip Tutorial
-          </Button>
+            {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          </button>
+        </div>
 
-          <p className="text-center text-xs text-muted-foreground mt-3">
-            Recording takes ~30 seconds
-          </p>
+        {/* TEXT CONTENT - COMPACT */}
+        <div className="mb-6">
+            <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">{data.title}</h1>
+            <p className="text-sm text-[#888] mb-5 font-medium">{data.subtitle}</p>
+
+            <div className="space-y-3 pl-1">
+            {data.lines.map((line, i) => (
+                <div key={i} className="flex items-center gap-3 text-[#BBB]">
+                <div className="w-1 h-1 bg-[#444] rounded-full"></div>
+                <p className="text-xs sm:text-sm">{line}</p>
+                </div>
+            ))}
+            </div>
+        </div>
+
+        {/* BOTTOM ACTION AREA */}
+        <div className="mt-auto space-y-3">
+            
+            {state !== "finished" ? (
+                // STATUS: PLAYING INSTRUCTIONS (Wait for audio OR 10s timer)
+                <div className="w-full h-12 bg-[#161616] border border-[#222] rounded-lg flex items-center justify-center gap-2 text-[#888] animate-pulse">
+                    <Volume2 size={16} className="text-[#2DFFA7]" />
+                    <span className="text-xs font-medium">
+                      {isMuted ? "Please wait..." : "Playing Instructions..."}
+                    </span>
+                </div>
+            ) : (
+                // ACTION: NEXT BUTTON (Only appears when finished)
+                <button
+                    onClick={onNext}
+                    className="w-full h-12 bg-[#2DFFA7] text-black font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-[#28e596] active:scale-[0.98] transition-all shadow-[0_0_15px_rgba(45,255,167,0.1)] text-sm"
+                >
+                    {step === 2 ? "Start Recording" : "Next Angle"}
+                    <ChevronRight className="w-4 h-4" />
+                </button>
+            )}
+
+            {/* Back Navigation */}
+            <div className="flex justify-center h-4">
+                <button 
+                    onClick={onPrev}
+                    disabled={step === 0}
+                    className={`text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                        step === 0 ? 'opacity-0 cursor-default' : 'text-[#555] hover:text-[#888]'
+                    }`}
+                >
+                    <ChevronLeft size={10} /> Previous
+                </button>
+            </div>
         </div>
 
       </div>

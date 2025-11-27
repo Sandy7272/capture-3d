@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Check, XCircle, SkipForward } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Check, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // White placeholder image
@@ -30,17 +28,6 @@ interface InstagramStoryTutorialProps {
 const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialProps) => {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
-
-  // Check if user wants to skip
-  useEffect(() => {
-    if (!isOpen) return;
-    const skipTutorials = localStorage.getItem("skipStoryTutorial");
-    if (skipTutorials === "true") {
-      onComplete();
-      return;
-    }
-  }, [isOpen, onComplete]);
 
   // Reset on open
   useEffect(() => {
@@ -49,7 +36,7 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
     setProgress(0);
   }, [isOpen]);
 
-  // Auto slide
+  // Auto slide (3s per story)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -60,36 +47,51 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
     const timer = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
-          nextTopic();
-          return 0;
+          if (index < topics.length - 1) {
+            setIndex((idx) => idx + 1);
+            return 0;
+          } else {
+            onComplete();
+            return 100;
+          }
         }
         return prev + step;
       });
     }, interval);
 
     return () => clearInterval(timer);
-  }, [index, isOpen]);
+  }, [index, isOpen, onComplete]);
 
-  const nextTopic = () => {
-    if (index < topics.length - 1) {
-      setIndex((prev) => prev + 1);
-      setProgress(0);
-    } else {
-      handleComplete();
-    }
-  };
+  // Tap Navigation
+  const handleTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const screenWidth = e.currentTarget.clientWidth;
+    const clickX = e.nativeEvent.offsetX;
 
-  const handleComplete = () => {
-    if (dontShowAgain) {
-      localStorage.setItem("skipStoryTutorial", "true");
+    // Tap left 30% -> Previous
+    if (clickX < screenWidth * 0.3) {
+      if (index > 0) {
+        setIndex((prev) => prev - 1);
+        setProgress(0);
+      }
+    } 
+    // Tap right 70% -> Next
+    else {
+      if (index < topics.length - 1) {
+        setIndex((prev) => prev + 1);
+        setProgress(0);
+      } else {
+        onComplete();
+      }
     }
-    onComplete();
   };
 
   const current = topics[index];
 
   return (
-    <div className={cn("fixed inset-0 z-50 bg-black flex flex-col", !isOpen && "hidden")}>
+    <div 
+      className={cn("fixed inset-0 z-50 bg-black flex flex-col cursor-pointer select-none", !isOpen && "hidden")}
+      onClick={handleTap}
+    >
       
       {/* Progress bars */}
       <div className="absolute top-4 left-2 right-2 flex gap-1 z-20">
@@ -105,75 +107,55 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
         ))}
       </div>
 
-      {/* Header Controls */}
-      <div className="absolute top-8 left-4 right-4 z-20 flex items-center justify-between">
-        <div className="flex items-center gap-2 bg-black/50 backdrop-blur-md px-3 py-2 rounded-lg">
-          <Checkbox
-            id="skip-story"
-            checked={dontShowAgain}
-            onCheckedChange={(checked) => setDontShowAgain(checked as boolean)}
-            className="border-white data-[state=checked]:bg-white data-[state=checked]:text-black"
-          />
-          <label htmlFor="skip-story" className="text-xs text-white cursor-pointer">
-            Don't show again
-          </label>
+      {/* MAIN CONTENT - Split Layout */}
+      <div className="flex-1 flex flex-row items-center justify-center p-8 w-full max-w-6xl mx-auto gap-16">
+
+        {/* LEFT SIDE: TEXT */}
+        <div className="flex-1 flex justify-end">
+          <div className="max-w-xs text-right">
+            <h2 className="text-5xl font-bold text-white animate-fade-in drop-shadow-md leading-tight">
+              {current.title}
+            </h2>
+            <p className="text-white/60 mt-4 text-lg">
+              Follow these best practices for better 3D results.
+            </p>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleComplete}
-            className="text-white hover:bg-white/20"
-          >
-            <SkipForward className="w-4 h-4 mr-1" /> Skip
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleComplete}
-            className="text-white hover:bg-white/20"
-          >
-            <X className="w-6 h-6" />
-          </Button>
-        </div>
-      </div>
-
-      {/* MAIN CONTENT */}
-      <div className="flex-1 relative flex flex-col md:flex-row justify-center items-center p-6 gap-8">
-
-        {/* TITLE */}
-        <div className="w-full md:w-1/3 text-center md:text-left">
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 animate-fade-in">
-            {current.title}
-          </h2>
-        </div>
-
-        {/* IMAGES */}
-        <div className="flex items-center justify-center gap-4">
+        {/* RIGHT SIDE: IMAGES */}
+        <div className="flex-1 flex items-center justify-start gap-6">
+          
           {/* GOOD IMAGE */}
-          <div className="relative w-40 h-56 bg-white rounded-xl overflow-hidden shadow-lg animate-slide-up">
-            <img src={current.goodImg} className="w-full h-full object-cover" alt="Good" />
-            <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
-              <Check className="text-green-600 w-6 h-6" />
+          <div className="relative w-48 h-72 bg-neutral-800 rounded-xl overflow-hidden shadow-2xl border-2 border-green-500/30 animate-slide-up">
+            <img src={current.goodImg} className="w-full h-full object-cover" alt="Good Example" />
+            
+            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur rounded-full p-1">
+              <Check className="text-green-400 w-5 h-5 stroke-[3]" />
             </div>
-            <div className="absolute bottom-2 left-2 bg-green-600 text-white text-sm px-2 py-1 rounded">
-              Correct
+            <div className="absolute bottom-0 left-0 right-0 bg-green-500/90 text-white text-[10px] font-bold py-1.5 text-center uppercase tracking-widest">
+              Do This
             </div>
           </div>
 
           {/* BAD IMAGE */}
-          <div className="relative w-40 h-56 bg-white rounded-xl overflow-hidden shadow-lg animate-slide-up">
-            <img src={current.badImg} className="w-full h-full object-cover" alt="Bad" />
-            <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow">
-              <XCircle className="text-red-600 w-6 h-6" />
+          <div className="relative w-48 h-72 bg-neutral-800 rounded-xl overflow-hidden shadow-2xl border-2 border-red-500/30 opacity-90 animate-slide-up animation-delay-100">
+            <img src={current.badImg} className="w-full h-full object-cover grayscale-[0.5]" alt="Bad Example" />
+            
+            <div className="absolute top-2 right-2 bg-black/50 backdrop-blur rounded-full p-1">
+              <XCircle className="text-red-400 w-5 h-5 stroke-[3]" />
             </div>
-            <div className="absolute bottom-2 left-2 bg-red-600 text-white text-sm px-2 py-1 rounded">
-              Incorrect
+            <div className="absolute bottom-0 left-0 right-0 bg-red-500/90 text-white text-[10px] font-bold py-1.5 text-center uppercase tracking-widest">
+              Don't Do This
             </div>
           </div>
+
         </div>
 
+      </div>
+      
+      {/* Tap Guidance Hint */}
+      <div className="absolute bottom-8 left-0 right-0 text-center text-white/20 text-xs font-medium pointer-events-none uppercase tracking-wider">
+        Tap to continue
       </div>
     </div>
   );

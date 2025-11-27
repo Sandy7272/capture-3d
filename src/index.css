@@ -31,7 +31,7 @@
     --accent: 0 0% 27%;
     --accent-foreground: 0 0% 98%; /* Pure White */
 
-    /* Destructive color (can be customized) */
+    /* Destructive color */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
 
@@ -42,15 +42,13 @@
 
     --radius: 0.75rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
-    font-family: "Geist", "Inter", sans-serif; /* Apply Geist Font globally */
+    font-family: "Geist", "Inter", sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -58,9 +56,105 @@
 /* Utility for 'Do' and 'Don't' badges */
 @layer components {
   .badge-do {
-    @apply absolute top-4 right-4 bg-green-500/90 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm z-10 flex items-center gap-2;
+    @apply absolute top-4 right-4 z-10 flex items-center gap-2 rounded-full bg-green-500/90 px-3 py-1 text-sm font-bold text-white shadow-lg backdrop-blur-sm;
   }
   .badge-dont {
     @apply absolute top-4 left-4 bg-red-500/90 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg backdrop-blur-sm z-10 flex items-center gap-2;
   }
+}
+
+/* ========================================================= */
+/*   PREMIUM ANIMATION KEYFRAMES (Instagram Quality)         */
+/* ========================================================= */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInSmooth {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleFade {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleUp {
+  0% { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ========================================================= */
+/*   ANIMATION UTILITY CLASSES (Tailwind Compatible)         */
+/* ========================================================= */
+
+.animate-fadeIn {
+  animation: fadeIn 0.45s ease-out forwards;
+}
+
+.animate-fadeInSmooth {
+  animation: fadeInSmooth 0.45s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.55s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.55s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+.animate-scaleFade {
+  animation: scaleFade 0.6s ease-out forwards;
+}
+
+.animate-scaleUp {
+  animation: scaleUp 0.45s ease-out forwards;
+}
+
+/* ========================================================= */
+/* OPTIONAL: Instagram Story Progress Bar Animation          */
+/* ========================================================= */
+
+.story-progress-bar {
+  height: 3px;
+  background-color: hsl(var(--primary));
+  border-radius: 999px;
+  animation: storyFill 5s linear forwards;
+}
+
+@keyframes storyFill {
+  from { width: 0%; }
+  to { width: 100%; }
 }
