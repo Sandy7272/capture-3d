@@ -52,18 +52,18 @@ export const RecordingScreen = ({
         <div className="flex items-center gap-4">
           {status === "idle" && (
             <Button
-              className="h-20 w-20 rounded-full bg-white text-black hover:bg-gray-200"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white text-black hover:bg-gray-200"
               onClick={onStart}
             >
-              <Camera className="w-8 h-8" />
+              <Camera className="w-7 h-7 sm:w-8 sm:h-8" />
             </Button>
           )}
           {status === "recording" && (
             <Button
-              className="h-20 w-20 rounded-full bg-red-500 text-white hover:bg-red-600"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 text-white hover:bg-red-600"
               onClick={onStop}
             >
-              <Video className="w-8 h-8" />
+              <Video className="w-7 h-7 sm:w-8 sm:h-8" />
             </Button>
           )}
         </div>

@@ -15,8 +15,8 @@ export const AngleReviewScreen = ({
   onContinue,
 }: AngleReviewScreenProps) => {
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-md">
+    <div className="fixed inset-0 z-50 bg-black overflow-y-auto p-4 sm:p-6 flex flex-col">
+      <div className="w-full max-w-md m-auto">
         <h2 className="text-2xl font-bold text-white mb-2 text-center">
           Review Your Angles
         </h2>
@@ -57,7 +57,7 @@ export const AngleReviewScreen = ({
               {blob && (
                 <video
                   src={URL.createObjectURL(blob)}
-                  className="w-full h-32 object-cover rounded-md mt-3"
+                  className="w-full aspect-video object-cover rounded-md mt-3"
                   muted
                   playsInline
                 />

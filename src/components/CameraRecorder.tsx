@@ -180,7 +180,7 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
 
       {/* TOP HUD - GLASSMORPHISM CARD */}
       {status !== "review" && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+        <div className="absolute top-6 inset-x-0 z-20 flex justify-center pointer-events-none">
           <div className="bg-black/40 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/10 shadow-lg">
             <p className="text-[10px] text-white/60 uppercase tracking-widest text-center font-semibold mb-1">
               {angleLabel}
@@ -210,15 +210,15 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
       )}
 
       {/* RIGHT CONTROL BAR */}
-      <div className="absolute top-0 bottom-0 right-0 w-24 z-30 flex flex-col items-center justify-center bg-gradient-to-l from-black/50 to-transparent">
+      <div className="absolute top-0 bottom-0 right-0 w-20 sm:w-24 z-30 flex flex-col items-center justify-center bg-gradient-to-l from-black/50 to-transparent p-2">
         {status === "review" ? (
           <div className="flex flex-col items-center gap-6 animate-in fade-in slide-in-from-right-5 duration-300">
             <div className="flex flex-col items-center gap-2">
-              <button 
-                onClick={handleConfirm} 
-                className="w-16 h-16 rounded-full bg-green-500 hover:bg-green-600 active:scale-95 text-white shadow-lg border-2 border-white/20 flex items-center justify-center transition-all"
+              <button
+                onClick={handleConfirm}
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-green-500 hover:bg-green-600 active:scale-95 text-white shadow-lg border-2 border-white/20 flex items-center justify-center transition-all"
               >
-                <CheckCircle className="w-8 h-8" />
+                <CheckCircle className="w-7 h-7 sm:w-8 sm:h-8" />
               </button>
               <span className="text-[10px] font-bold text-white/80 uppercase tracking-wider">Next</span>
             </div>
@@ -226,9 +226,9 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
             <div className="h-4" />
 
             <div className="flex flex-col items-center gap-2">
-              <button 
-                onClick={handleRetake} 
-                className="w-12 h-12 rounded-full border-2 border-white/30 bg-black/40 hover:bg-black/60 active:scale-95 text-white flex items-center justify-center transition-all"
+              <button
+                onClick={handleRetake}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-white/30 bg-black/40 hover:bg-black/60 active:scale-95 text-white flex items-center justify-center transition-all"
               >
                 <RotateCcw className="w-5 h-5" />
               </button>
@@ -238,23 +238,23 @@ export const CameraRecorder = ({ angleLabel, onRecordingComplete }: CameraRecord
         ) : (
           <div className="flex flex-col items-center gap-8">
             {hasZoom && (
-              <button 
-                onClick={toggleZoom} 
+              <button
+                onClick={toggleZoom}
                 className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 text-white text-xs font-bold hover:bg-black/60 active:scale-95 transition-all"
               >
                 {zoomLevel}x
               </button>
             )}
             
-            <button 
+            <button
               onClick={status === "idle" ? handleStart : handleStop}
-              className="relative w-20 h-20 flex items-center justify-center transition-transform active:scale-95"
+              className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center transition-transform active:scale-95"
             >
               <div className="absolute inset-0 rounded-full border-[5px] border-white shadow-xl" />
               {status === "recording" ? (
-                <div className="w-8 h-8 bg-red-500 rounded-sm shadow-lg" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-red-500 rounded-sm shadow-lg" />
               ) : (
-                <div className="w-14 h-14 bg-red-500 rounded-full shadow-lg" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-500 rounded-full shadow-lg" />
               )}
             </button>
           </div>

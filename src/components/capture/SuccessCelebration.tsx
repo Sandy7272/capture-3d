@@ -24,7 +24,7 @@ export const SuccessCelebration = ({ onContinue }: SuccessCelebrationProps) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-green-900/20 to-black backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 overflow-y-auto p-4 flex items-center justify-center bg-gradient-to-br from-green-900/20 to-black backdrop-blur-sm">
       {/* Confetti */}
       {confetti.map((particle) => (
         <div
@@ -39,7 +39,7 @@ export const SuccessCelebration = ({ onContinue }: SuccessCelebrationProps) => {
       ))}
 
       {/* Success Message */}
-      <div className="relative z-10 text-center px-6 max-w-md animate-scale-in">
+      <div className="relative z-10 text-center px-6 max-w-md animate-scale-in w-full">
         <div className="relative mb-6">
           <div className="absolute inset-0 flex items-center justify-center">
             <Sparkles className="w-20 h-20 text-green-400/30 animate-pulse" />
