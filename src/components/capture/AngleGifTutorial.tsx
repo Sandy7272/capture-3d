@@ -6,10 +6,10 @@ import {
   ChevronLeft,
 } from "lucide-react";
 
-// Make sure these paths are correct for your project structure
-import middleVideo from "../../asset/middle.mov";
-import topVideo from "../../asset/top.mov";
-import bottomVideo from "../../asset/bottom.mov";
+// Video Imports
+import middleVideo from "../../asset/middle.webm";
+import topVideo from "../../asset/top.webm";
+import bottomVideo from "../../asset/bottom.webm";
 
 interface AngleGifTutorialProps {
   angle: (typeof angleOrder)[number];
@@ -48,67 +48,87 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
   const data = angleData[angle];
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
   const [isMuted, setIsMuted] = useState(false);
-  const isMutedRef = useRef(false); // Ref to access current mute state inside callbacks
+  const isMutedRef = useRef(false);
 
   const [state, setState] = useState<"idle" | "speaking" | "finished">("idle");
   const [videoLoaded, setVideoLoaded] = useState(false);
+  
+  // New state to show countdown (optional, but helpful for 15s wait)
+  const [timeLeft, setTimeLeft] = useState(15);
 
-  // Sync ref with state
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
 
   // --- Voice Logic ---
   const speakInstructions = useCallback(() => {
-    if (!("speechSynthesis" in window)) {
-      // If no speech support, rely on the 10s timer or finish immediately
-      return; 
-    }
+    if (!("speechSynthesis" in window)) return; 
 
     window.speechSynthesis.cancel();
 
-    if (isMutedRef.current) {
-      return;
-    }
+    if (isMutedRef.current) return;
 
     const msg = new SpeechSynthesisUtterance(data.speak);
     msg.rate = 1.0;
+    utteranceRef.current = msg;
     
     msg.onstart = () => setState("speaking");
     
+    // NOTE: We removed the onend logic here. 
+    // The button will ONLY appear after the 15s timer, not when the voice finishes.
     msg.onend = () => {
-      // Only finish if NOT muted. 
-      // If muted, we wait for the 10s timer instead.
-      if (!isMutedRef.current) {
-        setState("finished");
-      }
+      // Do nothing, wait for timer.
     };
 
-    msg.onerror = () => {
-        // On error, we rely on the timer to eventually unlock the button
+    msg.onerror = (e) => {
+      console.warn("Speech error:", e);
     };
 
-    window.speechSynthesis.speak(msg);
+    const voices = window.speechSynthesis.getVoices();
+    if (voices.length > 0) {
+        window.speechSynthesis.speak(msg);
+    } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+            window.speechSynthesis.speak(msg);
+            window.speechSynthesis.onvoiceschanged = null;
+        };
+    }
   }, [data.speak]);
 
   // --- Effect: Step Change Lifecycle ---
   useEffect(() => {
     setVideoLoaded(false);
-    setState("speaking"); // Initially assume speaking/waiting
+    setState("speaking");
+    setTimeLeft(15); // Reset countdown
     
-    // 1. Start Audio
-    speakInstructions();
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
 
-    // 2. Start 10s Fallback Timer
-    // This ensures the button appears after 10s even if muted or audio fails
-    const timer = setTimeout(() => {
-      setState("finished");
-    }, 10000);
+    // Small delay to ensure audio plays correctly
+    const audioTimer = setTimeout(() => {
+        speakInstructions();
+    }, 500);
+
+    // --- 15 SECOND TIMER LOGIC ---
+    // We use an interval to update the countdown visual
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setState("finished"); // Unlock button at 0
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(audioTimer);
+      clearInterval(interval);
       window.speechSynthesis.cancel();
     };
   }, [step, speakInstructions]);
@@ -116,16 +136,8 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
   const toggleMute = () => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
-    
     if (newMuteState) {
-      // If muting, stop audio. 
-      // NOTE: We do NOT set state to "finished" here. 
-      // User must wait for the 10s timer.
       window.speechSynthesis.cancel();
-    } else {
-      // If unmuting, we could replay, but user might just want to hear remaining time?
-      // For simplicity, we just unmute. 
-      // If they want to hear it, they can reset the step (Previous -> Next).
     }
   };
 
@@ -134,38 +146,31 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
 
       {/* LEFT SIDE: PREVIEW */}
       <div className="w-[60%] flex justify-center items-center px-4 bg-[#050505]">
-        {/* Updated Container: 
-          - Removed p-4 padding so video fits edge-to-edge.
-          - Added overflow-hidden so video corners are rounded by the container.
-          - Increased max-w for better presence.
-        */}
         <div className="relative w-full max-w-2xl rounded-2xl bg-gradient-to-br from-[#111] to-[#0A0A0A] border border-[#222] shadow-2xl overflow-hidden">
-          
-          {/* TUTORIAL PREVIEW TEXT REMOVED HERE */}
-
           <video
             ref={videoRef}
-            key={data.video}
+            key={data.video} 
             autoPlay
             muted
             loop
             playsInline
-            src={data.video}
+            preload="auto" 
             onLoadedData={() => setVideoLoaded(true)}
-            // Updated classes: Removed fixed heights and mt-4. Added h-auto.
             className={`
               w-full h-auto
               object-contain transition-opacity duration-500
               ${videoLoaded ? 'opacity-100' : 'opacity-0'} 
             `}
-          />
+          >
+            <source src={data.video} type="video/webm" />
+          </video>
         </div>
       </div>
 
-      {/* RIGHT SIDE: UI PANEL - COMPACT */}
+      {/* RIGHT SIDE: UI PANEL */}
       <div className="w-[40%] bg-[#0A0A0A] border-l border-[#222] px-5 py-6 flex flex-col justify-center relative">
 
-        {/* TOP SEGMENTED PROGRESS BAR */}
+        {/* PROGRESS BAR */}
         <div className="flex gap-1.5 mb-6">
           {[0, 1, 2].map((i) => (
             <div 
@@ -177,7 +182,7 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
           ))}
         </div>
 
-        {/* HEADER: STEP BADGE + MUTE */}
+        {/* HEADER */}
         <div className="flex justify-between items-start mb-4">
           <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[#2DFFA7]/10 border border-[#2DFFA7]/20 text-[#2DFFA7] text-[10px] font-bold tracking-wide uppercase">
             Step {step + 1} of 3
@@ -192,7 +197,7 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
           </button>
         </div>
 
-        {/* TEXT CONTENT - COMPACT */}
+        {/* CONTENT */}
         <div className="mb-6">
             <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">{data.title}</h1>
             <p className="text-sm text-[#888] mb-5 font-medium">{data.subtitle}</p>
@@ -207,19 +212,23 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
             </div>
         </div>
 
-        {/* BOTTOM ACTION AREA */}
+        {/* ACTIONS */}
         <div className="mt-auto space-y-3">
             
             {state !== "finished" ? (
-                // STATUS: PLAYING INSTRUCTIONS (Wait for audio OR 10s timer)
-                <div className="w-full h-12 bg-[#161616] border border-[#222] rounded-lg flex items-center justify-center gap-2 text-[#888] animate-pulse">
-                    <Volume2 size={16} className="text-[#2DFFA7]" />
-                    <span className="text-xs font-medium">
-                      {isMuted ? "Please wait..." : "Playing Instructions..."}
-                    </span>
+                // LOADING/WAITING STATE
+                <div className="w-full h-12 bg-[#161616] border border-[#222] rounded-lg flex items-center justify-center gap-2 text-[#888]">
+                    {/* Show Pulse if speaking, otherwise static */}
+                    <div className="animate-pulse flex items-center gap-2">
+                      <Volume2 size={16} className="text-[#2DFFA7]" />
+                      <span className="text-xs font-medium tabular-nums">
+                        {/* Display countdown text */}
+                        Wait {timeLeft}s...
+                      </span>
+                    </div>
                 </div>
             ) : (
-                // ACTION: NEXT BUTTON (Only appears when finished)
+                // FINISHED STATE
                 <button
                     onClick={onNext}
                     className="w-full h-12 bg-[#2DFFA7] text-black font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-[#28e596] active:scale-[0.98] transition-all shadow-[0_0_15px_rgba(45,255,167,0.1)] text-sm"
@@ -229,7 +238,6 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
                 </button>
             )}
 
-            {/* Back Navigation */}
             <div className="flex justify-center h-4">
                 <button 
                     onClick={onPrev}

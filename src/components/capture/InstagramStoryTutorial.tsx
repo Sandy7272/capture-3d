@@ -5,9 +5,9 @@ import { cn } from "@/lib/utils";
 // Make sure these paths are correct in your project folder structure
 import naturalLightingGood from "../../asset/naturalLightingGood.png";
 import naturalLightingBad from "../../asset/naturalLightingBad.png";
-import frameObjectGood from "../../asset/frame-object-good.png";
+import frameObjectGood from "../../asset/naturalLightingGood.png";
 import frameObjectBad from "../../asset/frame-object-bad.png";
-import cleanBackgroundGood from "../../asset/cleanBackgroundGood.png";
+import cleanBackgroundGood from "../../asset/naturalLightingGood.png";
 import cleanBackgroundBad from "../../asset/cleanBackgroundBad.png";
 
 interface Topic {
@@ -53,20 +53,16 @@ interface InstagramStoryTutorialProps {
 const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialProps) => {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [pressStartTime, setPressStartTime] = useState(0);
-
   // Reset on open
   useEffect(() => {
     if (!isOpen) return;
     setIndex(0);
     setProgress(0);
-    setIsPaused(false);
   }, [isOpen]);
 
   // Auto slide (5s per story)
   useEffect(() => {
-    if (!isOpen || isPaused) return;
+    if (!isOpen) return;
 
     const duration = 5000;
     const interval = 50;
@@ -88,51 +84,7 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
     }, interval);
 
     return () => clearInterval(timer);
-  }, [index, isOpen, onComplete, isPaused]);
-
-  // Tap Navigation Logic
-  const handleTap = (clientX: number, screenWidth: number) => {
-    // Tap left 30% -> Previous
-    if (clientX < screenWidth * 0.3) {
-      if (index > 0) {
-        setIndex((prev) => prev - 1);
-        setProgress(0);
-      }
-    }
-    // Tap right 70% -> Next
-    else {
-      if (index < topics.length - 1) {
-        setIndex((prev) => prev + 1);
-        setProgress(0);
-      } else {
-        onComplete();
-      }
-    }
-  };
-
-  // Handle Mouse Up
-  const onMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsPaused(false);
-    const pressDuration = Date.now() - pressStartTime;
-    if (pressDuration < 200) {
-      handleTap(e.nativeEvent.offsetX, e.currentTarget.clientWidth);
-    }
-  };
-
-  // Handle Touch End (Mobile)
-  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    setIsPaused(false);
-    const pressDuration = Date.now() - pressStartTime;
-    if (pressDuration < 200) {
-      const touches = e.changedTouches;
-      if (touches && touches.length > 0) {
-        const touch = touches;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        handleTap(x, rect.width);
-      }
-    }
-  };
+  }, [index, isOpen, onComplete]);
 
   const current = topics[index];
 
@@ -148,17 +100,6 @@ const InstagramStoryTutorial = ({ onComplete, isOpen }: InstagramStoryTutorialPr
         "fixed inset-0 z-50 bg-black flex flex-col h-[100dvh] w-screen overflow-hidden overscroll-none touch-none select-none",
         !isOpen && "hidden"
       )}
-      // Interaction Events
-      onMouseDown={() => {
-        setIsPaused(true);
-        setPressStartTime(Date.now());
-      }}
-      onMouseUp={onMouseUp}
-      onTouchStart={() => {
-        setIsPaused(true);
-        setPressStartTime(Date.now());
-      }}
-      onTouchEnd={onTouchEnd}
     >
       {/* Progress bars */}
       <div className="absolute top-3 left-3 right-3 flex gap-1.5 z-20 pointer-events-none">
