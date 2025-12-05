@@ -6,13 +6,13 @@ import { cn } from "@/lib/utils";
 import { CountdownOverlay } from "./capture/CountdownOverlay";
 
 // --- Configuration ---
-const ANGLE_DURATION = 15;
+const ANGLE_DURATION = 30;
 const TOTAL_DURATION = ANGLE_DURATION * 4;
 
 const PHASES = [
   { id: 1, label: "Middle", instruction: "Hold phone at chest height. Walk around object." },
-  { id: 2, label: "Top", instruction: "Raise phone high. Tilt down 45°." },
-  { id: 3, label: "Bottom", instruction: "Lower phone. Tilt up 45°." },
+  { id: 2, label: "Top", instruction: "Raise the phone and Tilt it downwards 45°" },
+  { id: 3, label: "Bottom", instruction: "Lower phone and Tilt it upwards 45°." },
   { id: 4, label: "Detail", instruction: "Get close. Pan slowly across textures." },
 ];
 
