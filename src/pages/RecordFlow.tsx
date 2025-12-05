@@ -20,9 +20,9 @@ const RecordFlow = () => {
   const navigate = useNavigate();
 
   // --- TUTORIAL STATE (Preserved) ---
-  const [tutorialIndex, setTutorialIndex] = useState(0); // 0=middle, 1=top, 2=bottom
+  const [tutorialIndex, setTutorialIndex] = useState(0); // 0=middle, 1=top, 2=bottom, 3=detail
   const [showTutorial, setShowTutorial] = useState(true);
-  const angleNames: ("middle" | "top" | "bottom")[] = ["middle", "top", "bottom"];
+  const angleNames: ("middle" | "top" | "bottom" | "detail")[] = ["middle", "top", "bottom", "detail"];
 
   // --- RECORDING STATE ---
   const [finalBlob, setFinalBlob] = useState<Blob | null>(null);
@@ -45,7 +45,7 @@ const RecordFlow = () => {
 
   // --- TUTORIAL HANDLERS ---
   const handleTutorialNext = () => {
-    if (tutorialIndex < 2) {
+    if (tutorialIndex < 3) {
       setTutorialIndex(tutorialIndex + 1);
     } else {
       setShowTutorial(false); // All tutorials done -> Start Camera

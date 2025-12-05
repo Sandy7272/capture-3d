@@ -17,7 +17,7 @@ interface AngleGifTutorialProps {
   onPrev: () => void;
 }
 
-const angleOrder = ["middle", "top", "bottom"] as const;
+const angleOrder = ["middle", "top", "bottom", "detail"] as const;
 
 const angleData = {
   middle: {
@@ -40,6 +40,13 @@ const angleData = {
     video: bottomVideo,
     speak: "This is the bottom angle. Hold your phone low and tilt upward while moving around the object.",
     lines: ["Phone lower than object", "Tilt 45° up", "Walk full circle"],
+  },
+  detail: {
+    title: "Detail Capture",
+    subtitle: "Close-up Details",
+    video: middleVideo, // Placeholder - reusing middle video
+    speak: "This is the detail capture. Get close to the object and slowly pan across interesting features and textures.",
+    lines: ["Get close to object", "Focus on textures & details", "Move slowly across surface"],
   },
 };
 
@@ -195,7 +202,7 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
 
         {/* PROGRESS BAR */}
         <div className="flex gap-1.5 mb-6">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <div 
               key={i} 
               className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
@@ -208,7 +215,7 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
         {/* HEADER */}
         <div className="flex justify-between items-start mb-4">
           <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-md bg-[#2DFFA7]/10 border border-[#2DFFA7]/20 text-[#2DFFA7] text-[10px] font-bold tracking-wide uppercase">
-            Step {step + 1} of 3
+            Step {step + 1} of 4
           </div>
 
           <button 
@@ -254,7 +261,7 @@ const AngleGifTutorial: FC<AngleGifTutorialProps> = ({ angle, onNext, onPrev }) 
                     onClick={onNext}
                     className="w-full h-12 bg-[#2DFFA7] text-black font-bold rounded-lg flex items-center justify-center gap-2 hover:bg-[#28e596] active:scale-[0.98] transition-all shadow-[0_0_15px_rgba(45,255,167,0.1)] text-sm"
                 >
-                    {step === 2 ? "Start Recording" : "Next Angle"}
+                    {step === 3 ? "Start Recording" : "Next Angle"}
                     <ChevronRight className="w-4 h-4" />
                 </button>
             )}

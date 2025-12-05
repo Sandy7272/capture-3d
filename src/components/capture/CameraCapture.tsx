@@ -115,8 +115,6 @@ const CameraCapture = ({ onBack }) => {
       {!showTutorial && !isProcessing && (
         <CameraRecorder
           key={angleStep}
-          angleStep={angleStep}
-          autoStart={autoStart}
           onRecordingComplete={handleComplete}
         />
       )}

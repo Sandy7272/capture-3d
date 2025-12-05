@@ -7,12 +7,13 @@ import { CountdownOverlay } from "./capture/CountdownOverlay";
 
 // --- Configuration ---
 const ANGLE_DURATION = 15;
-const TOTAL_DURATION = ANGLE_DURATION * 3;
+const TOTAL_DURATION = ANGLE_DURATION * 4;
 
 const PHASES = [
   { id: 1, label: "Middle", instruction: "Hold phone at chest height. Walk around object." },
   { id: 2, label: "Top", instruction: "Raise phone high. Tilt down 45°." },
   { id: 3, label: "Bottom", instruction: "Lower phone. Tilt up 45°." },
+  { id: 4, label: "Detail", instruction: "Get close. Pan slowly across textures." },
 ];
 
 const useScreenOrientation = () => {
@@ -80,11 +81,12 @@ export const CameraRecorder = ({ onRecordingComplete }: CameraRecorderProps) => 
         if (tracks.length > 0) {
           const track = tracks[0];
           // @ts-ignore
-          const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+          const capabilities = track.getCapabilities ? track.getCapabilities() : {} as Record<string, unknown>;
 
           if ('zoom' in capabilities) {
             setHasZoom(true);
-            const min = capabilities.zoom.min;
+            const zoomCaps = capabilities.zoom as { min: number; max: number };
+            const min = zoomCaps.min;
             setMinZoom(min);
 
             const initialZoom = min < 1 ? min : 1;
@@ -195,6 +197,12 @@ export const CameraRecorder = ({ onRecordingComplete }: CameraRecorderProps) => 
           triggerFlash();
           if (navigator.vibrate) navigator.vibrate(200);
           speak("Switch to Bottom Angle. Lower phone and tilt up.");
+        }
+        else if (nextTime === ANGLE_DURATION * 3) {
+          setCurrentPhaseIdx(3);
+          triggerFlash();
+          if (navigator.vibrate) navigator.vibrate(200);
+          speak("Switch to Detail Capture. Get close and pan across textures.");
         }
         else if (nextTime >= TOTAL_DURATION) {
           clearInterval(interval);
